@@ -533,6 +533,7 @@ function createPlanningCell(day, time, col) {
 
     cell.appendChild(input);
     updateCellAppearance(cell, planningData[day][time][col]);
+    mergeIdenticalCells(day);
     return cell;
 }
         
@@ -629,7 +630,58 @@ function createPlanningCell(day, time, col) {
                 });
             }
         }
-        
+        function mergeIdenticalCells(day) {
+            for (let col = 0; col < cols; col++) {
+    for (let row = 0; row < rows; row++) {
+        if (cellsMatrix[col][row]) {
+            cellsMatrix[col][row].style.gridRow = "";
+            cellsMatrix[col][row].style.display = "";
+        }
+    }
+}
+    const grid = document.getElementById('planning-' + day);
+    if (!grid) return;
+    const rows = timeSlots.length;
+    const cols = columns.length;
+    // Stocker les cellules par colonne
+    const cellsMatrix = [];
+    for (let col = 0; col < cols; col++) {
+        cellsMatrix[col] = [];
+        for (let row = 0; row < rows; row++) {
+            // L’indice de la div = row * nbColonnes + col + 1 (car time-slot en début)
+            const idx = row * (cols + 1) + (col + 1);
+            cellsMatrix[col][row] = grid.children[idx];
+        }
+    }
+    // Parcours chaque colonne pour fusionner
+    for (let col = 0; col < cols; col++) {
+        let start = 0;
+        while (start < rows) {
+            let end = start;
+            while (
+                end + 1 < rows &&
+                planningData[day][timeSlots[end]][columns[col]] &&
+                planningData[day][timeSlots[end]][columns[col]] === planningData[day][timeSlots[end + 1]][columns[col]]
+            ) {
+                end++;
+            }
+            // S'il y a fusion à faire (au moins 2 cellules identiques)
+            if (end > start) {
+                // On étend la première cellule sur plusieurs lignes
+                cellsMatrix[col][start].style.gridRow = `span ${end - start + 1}`;
+                // On masque les suivantes
+                for (let r = start + 1; r <= end; r++) {
+                    cellsMatrix[col][r].style.display = "none";
+                }
+            } else {
+                // Réinitialise si pas de fusion
+                cellsMatrix[col][start].style.gridRow = "";
+                cellsMatrix[col][start].style.display = "";
+            }
+            start = end + 1;
+        }
+    }
+}
         function generateExcel() {
             const wb = XLSX.utils.book_new();
             
