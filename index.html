@@ -457,7 +457,25 @@
                 createPlanningGrid(day);
             });
         }
-        
+        function createPlanningGrid(day) {
+            const container = document.getElementById(`planning-${day}`);
+            container.innerHTML = '';
+            
+            // Headers
+            container.appendChild(createCell('', 'header-cell'));
+            columns.forEach(col => {
+                container.appendChild(createCell(col, 'header-cell'));
+            });
+            
+            // Time slots and data
+            timeSlots.forEach(time => {
+                container.appendChild(createCell(time, 'time-slot'));
+                columns.forEach(col => {
+                    const cell = createPlanningCell(day, time, col);
+                    container.appendChild(cell);
+                });
+            });
+        }
 function createPlanningCell(day, time, col) {
     const cell = document.createElement('div');
     cell.className = 'planning-cell';
