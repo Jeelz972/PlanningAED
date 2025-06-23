@@ -272,6 +272,9 @@
         <div class="controls">
             <button class="btn btn-success" onclick="generateExcel()">📊 Générer fichier Excel</button>
             <button class="btn btn-danger" onclick="clearAll()">🗑️ Effacer tout</button>
+<!-- Bouton d'import -->
+<input type="file" id="import-excel" accept=".xlsx,.xls" style="display:none" />
+<button class="btn btn-primary" onclick="document.getElementById('import-excel').click()">Importer un fichier Excel</button>
         </div>
         
         <div class="activity-selector">
@@ -763,6 +766,49 @@ function createPlanningCell(day, time, col) {
         function updateCell(day, time, col, activity, refresh = true) {
     planningData[day][time][col] = activity;
     if (refresh) createPlanningGrid(day);
+}
+
+        document.getElementById('import-excel').addEventListener('change', handleExcelImport);
+
+function handleExcelImport(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        // On prend la première feuille (adapte si besoin)
+        const firstSheet = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[firstSheet];
+        const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+        // On suppose la première ligne = header: ['Heure', 'A', 'B', ...]
+        // Les suivantes = [heure, valeurA, valeurB, ...]
+        // On détecte le jour à remplir selon l'onglet sélectionné
+        const activeDayTab = document.querySelector('.tab-content.active').id.replace('planning-', '');
+        let day = activeDayTab;
+        if (!['lundi','mardi','mercredi','jeudi','vendredi'].includes(day)) {
+            // Si id = lundi, mardi... on le garde
+            day = activeDayTab;
+        } else {
+            // Fallback: lundi par défaut
+            day = "lundi";
+        }
+
+        // On remplit planningData
+        for (let i = 1; i < rows.length; i++) { // Commence à 1 (skip header)
+            const row = rows[i];
+            const time = row[0];
+            if (!planningData[day][time]) continue; // Ignore heures non trouvées
+            for (let c = 0; c < columns.length; c++) {
+                planningData[day][time][columns[c]] = row[c + 1] || '';
+            }
+        }
+        // Rafraîchit la grille du jour importé
+        createPlanningGrid(day);
+        alert("Importation terminée !");
+    };
+    reader.readAsArrayBuffer(file);
 }
     </script>
 </body>
