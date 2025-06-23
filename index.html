@@ -768,45 +768,42 @@ function createPlanningCell(day, time, col) {
     if (refresh) createPlanningGrid(day);
 }
 
-        document.getElementById('import-excel').addEventListener('change', handleExcelImport);
+        document.getElementById('import-excel').addEventListener('change', handleExcelImportAllDays);
 
-function handleExcelImport(event) {
+function handleExcelImportAllDays(event) {
     const file = event.target.files[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = function(e) {
         const data = new Uint8Array(e.target.result);
         const workbook = XLSX.read(data, { type: 'array' });
-        // On prend la première feuille (adapte si besoin)
-        const firstSheet = workbook.SheetNames[0];
-        const sheet = workbook.Sheets[firstSheet];
-        const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+        const dayNames = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi'];
 
-        // On suppose la première ligne = header: ['Heure', 'A', 'B', ...]
-        // Les suivantes = [heure, valeurA, valeurB, ...]
-        // On détecte le jour à remplir selon l'onglet sélectionné
-        const activeDayTab = document.querySelector('.tab-content.active').id.replace('planning-', '');
-        let day = activeDayTab;
-        if (!['lundi','mardi','mercredi','jeudi','vendredi'].includes(day)) {
-            // Si id = lundi, mardi... on le garde
-            day = activeDayTab;
-        } else {
-            // Fallback: lundi par défaut
-            day = "lundi";
-        }
+        let changedDay = false;
+        dayNames.forEach(day => {
+            // Cherche la feuille correspondante (insensible à la casse)
+            const sheetName = workbook.SheetNames.find(n => n.trim().toLowerCase() === day);
+            if (!sheetName) return; // Si la feuille n'existe pas, passe au jour suivant
 
-        // On remplit planningData
-        for (let i = 1; i < rows.length; i++) { // Commence à 1 (skip header)
-            const row = rows[i];
-            const time = row[0];
-            if (!planningData[day][time]) continue; // Ignore heures non trouvées
-            for (let c = 0; c < columns.length; c++) {
-                planningData[day][time][columns[c]] = row[c + 1] || '';
+            const sheet = workbook.Sheets[sheetName];
+            const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+            for (let i = 1; i < rows.length; i++) { // Commence à 1 (skip header)
+                const row = rows[i];
+                const time = row[0];
+                if (!planningData[day][time]) continue; // Ignore heures non trouvées
+                for (let c = 0; c < columns.length; c++) {
+                    planningData[day][time][columns[c]] = row[c + 1] || '';
+                }
             }
+            changedDay = true;
+            createPlanningGrid(day);
+        });
+
+        if (changedDay) {
+            alert("Importation terminée !");
+        } else {
+            alert("Aucune feuille nommée 'lundi', 'mardi', etc. trouvée dans le fichier.");
         }
-        // Rafraîchit la grille du jour importé
-        createPlanningGrid(day);
-        alert("Importation terminée !");
     };
     reader.readAsArrayBuffer(file);
 }
