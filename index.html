@@ -451,7 +451,19 @@
                 });
             });
         });
-        
+        document.addEventListener('mouseup', () => isMouseDown = false);
+
+document.querySelectorAll('.planning-cell').forEach(cell => {
+  cell.addEventListener('mousedown', function() {
+    isMouseDown = true;
+    // Remplir la cellule
+  });
+  cell.addEventListener('mouseover', function() {
+    if (isMouseDown) {
+      // Remplir la cellule
+    }
+  });
+});
         function initializePlannings() {
             days.forEach(day => {
                 createPlanningGrid(day);
