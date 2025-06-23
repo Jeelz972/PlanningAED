@@ -85,7 +85,9 @@
             overflow: hidden;
             margin-bottom: 20px;
         }
-        
+        .planning-grid > div[style*="display: none"] {
+    display: none !important;
+}
         .time-slot {
             background: #f8f9fa;
             padding: 8px;
@@ -256,6 +258,11 @@
             padding: 8px 16px;
             font-size: 12px;
         }
+        .planning-table th, .planning-table td {
+    border: 1px solid #ddd;
+    padding: 4px;
+    text-align: center;
+}
     </style>
 </head>
 <body>
@@ -427,7 +434,11 @@
         const days = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi'];
         
         let selectedActivity = 'BVS1';
-        let planningData = {};
+        let planningData = {let isMouseDown = false;
+let dragActivity = null;
+let startDay = null;
+let startCol = null;
+let startRow = null;};
         
         // Initialiser les données de planning
         days.forEach(day => {
@@ -446,25 +457,84 @@
             });
         }
         
-        function createPlanningGrid(day) {
-            const container = document.getElementById(`planning-${day}`);
-            container.innerHTML = '';
-            
-            // Headers
-            container.appendChild(createCell('', 'header-cell'));
-            columns.forEach(col => {
-                container.appendChild(createCell(col, 'header-cell'));
-            });
-            
-            // Time slots and data
-            timeSlots.forEach(time => {
-                container.appendChild(createCell(time, 'time-slot'));
-                columns.forEach(col => {
-                    const cell = createPlanningCell(day, time, col);
-                    container.appendChild(cell);
-                });
-            });
+function createPlanningCell(day, time, col) {
+    const cell = document.createElement('div');
+    cell.className = 'planning-cell';
+
+    // Repère la position de la cellule
+    const rowIdx = timeSlots.indexOf(time);
+    const colIdx = columns.indexOf(col);
+
+    // Gestion drag & drop
+    cell.onmousedown = function(e) {
+        isMouseDown = true;
+        dragActivity = selectedActivity;
+        startDay = day;
+        startCol = col;
+        startRow = rowIdx;
+        updateCell(day, time, col, dragActivity, false);
+        document.body.style.userSelect = "none";
+    };
+    cell.onmouseover = function(e) {
+        if (isMouseDown && dragActivity && day === startDay && col === startCol) {
+            // Remplit les cases entre startRow et rowIdx
+            let min = Math.min(startRow, rowIdx);
+            let max = Math.max(startRow, rowIdx);
+            for (let r = min; r <= max; r++) {
+                let t = timeSlots[r];
+                planningData[day][t][col] = dragActivity;
+            }
+            createPlanningGrid(day);
         }
+    };
+    cell.onmouseup = function(e) {
+        isMouseDown = false;
+        dragActivity = null;
+        startDay = null;
+        startCol = null;
+        startRow = null;
+        document.body.style.userSelect = "";
+    };
+
+    // Pour mobile/tactile :
+    cell.ontouchstart = function(e) {
+        isMouseDown = true;
+        dragActivity = selectedActivity;
+        startDay = day;
+        startCol = col;
+        startRow = rowIdx;
+        updateCell(day, time, col, dragActivity, false);
+    };
+    cell.ontouchmove = function(e) {
+        if (!isMouseDown) return;
+        const touch = e.touches[0];
+        const target = document.elementFromPoint(touch.clientX, touch.clientY);
+        if (target && target.classList.contains('planning-cell')) {
+            const idx = Array.from(target.parentNode.children).indexOf(target);
+            // (Optionnel: tu peux retrouver la position exacte ici)
+        }
+    };
+    cell.ontouchend = function(e) {
+        isMouseDown = false;
+        dragActivity = null;
+        startDay = null;
+        startCol = null;
+        startRow = null;
+    };
+
+    // On continue d'afficher l'input pour l'édition manuelle
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = planningData[day][time][col];
+    input.onchange = function() {
+        planningData[day][time][col] = this.value;
+        updateCellAppearance(cell, this.value);
+    };
+
+    cell.appendChild(input);
+    updateCellAppearance(cell, planningData[day][time][col]);
+    return cell;
+}
         
         function createCell(content, className) {
             const cell = document.createElement('div');
@@ -599,6 +669,18 @@
         
         // Sélectionner le premier poste par défaut
         document.querySelector('.activity-btn').classList.add('selected');
+        document.addEventListener('mouseup', function() {
+    isMouseDown = false;
+    dragActivity = null;
+    startDay = null;
+    startCol = null;
+    startRow = null;
+    document.body.style.userSelect = "";
+});
+        function updateCell(day, time, col, activity, refresh = true) {
+    planningData[day][time][col] = activity;
+    if (refresh) createPlanningGrid(day);
+}
     </script>
 </body>
 </html>
