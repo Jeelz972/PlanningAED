@@ -813,8 +813,7 @@ function handleExcelImportAllDays(event) {
     };
     reader.readAsArrayBuffer(file);
 }
-       function updateStatsTable() {
-    // { personne: { poste: durée, ... }, ... }
+ function updateStatsTable() {
     const personPosteTimes = {};
     let totalMinutes = 0;
 
@@ -823,16 +822,13 @@ function handleExcelImportAllDays(event) {
             columns.forEach(col => {
                 const value = planningData[day][time][col];
                 if (value && value.trim() !== '') {
-                    // On suppose : "poste (Nom)" ou juste "Nom"
                     let poste = col;
                     let personne = value.trim();
-
                     const match = value.match(/^(.+?)\s*\((.+)\)$/);
                     if (match) {
                         poste = match[1].trim();
                         personne = match[2].trim();
                     }
-                    
                     personPosteTimes[personne] = personPosteTimes[personne] || {};
                     personPosteTimes[personne][poste] = (personPosteTimes[personne][poste] || 0) + 5;
                     totalMinutes += 5;
@@ -841,37 +837,34 @@ function handleExcelImportAllDays(event) {
         });
     });
 
-    // Affichage
-    let html = '<table class="planning-table"><tr><th>Personne</th><th>Poste</th><th>Temps</th></tr>';
-    let totalParPersonne = {};
+    let html = '<div style="margin-bottom:1em"><b>Récapitulatif par personne :</b></div>';
+    html += '<table class="planning-table"><tr><th>Personne</th><th>Détail</th></tr>';
 
     for (const personne in personPosteTimes) {
-        let sommePers = 0;
+        let details = [];
+        let totalPers = 0;
         for (const poste in personPosteTimes[personne]) {
-            const minutes = personPosteTimes[personne][poste];
-            sommePers += minutes;
-            html += `<tr>
-                <td>${personne}</td>
-                <td>${poste}</td>
-                <td>${minutes >= 60 ? (Math.floor(minutes/60) + 'h' + (minutes%60 ? (minutes%60).toString().padStart(2, '0') : '')) : minutes + ' min'}</td>
-            </tr>`;
+            const mins = personPosteTimes[personne][poste];
+            details.push(`${poste} = ${formatDuree(mins)}`);
+            totalPers += mins;
         }
-        totalParPersonne[personne] = sommePers;
+        details.push(`<b>temps travail global = ${formatDuree(totalPers)}</b>`);
+        html += `<tr><td><b>${personne}</b></td><td>${details.join(' ; ')}</td></tr>`;
     }
     html += '</table>';
 
-    // Total par personne (tous postes confondus)
-    html += '<br><b>Total par personne (tous postes) :</b><ul>';
-    for (const personne in totalParPersonne) {
-        const minutes = totalParPersonne[personne];
-        html += `<li>${personne} : ${minutes >= 60 ? (Math.floor(minutes/60) + 'h' + (minutes%60 ? (minutes%60).toString().padStart(2, '0') : '')) : minutes + ' min'}</li>`;
-    }
-    html += '</ul>';
-
-    // Temps global
-    html += `<br><b>Temps global planifié :</b> ${totalMinutes >= 60 ? (Math.floor(totalMinutes/60) + 'h' + (totalMinutes%60 ? (totalMinutes%60).toString().padStart(2, '0') : '')) : totalMinutes + ' min'}`;
-
+    html += `<br><b>Temps global planifié :</b> ${formatDuree(totalMinutes)}`;
     document.getElementById('stats-table').innerHTML = html;
+}
+
+// Helper : minutes → format "XhYY" ou "ZZ min"
+function formatDuree(minutes) {
+    if (minutes >= 60) {
+        const h = Math.floor(minutes / 60);
+        const m = minutes % 60;
+        return h + 'h' + (m ? (m < 10 ? '0' : '') + m : '');
+    }
+    return minutes + ' min';
 }
     </script>
 </body>
