@@ -321,6 +321,7 @@
             <div class="tab" onclick="showTab('mercredi')">Mercredi</div>
             <div class="tab" onclick="showTab('jeudi')">Jeudi</div>
             <div class="tab" onclick="showTab('vendredi')">Vendredi</div>
+            <div class="tab" onclick="showTab('synthese')">Synthèse</div>
         </div>
         
         <div id="lundi" class="tab-content active">
@@ -347,7 +348,10 @@
             <h3>Planning Vendredi</h3>
             <div id="planning-vendredi" class="planning-grid"></div>
         </div>
-        
+        <div id="synthese" class="tab-content">
+    <h3>Synthèse du temps par poste et personne</h3>
+    <div id="stats-table"></div>
+</div>
         <div class="legend">
             <div class="legend-item">
                 <div class="legend-color bvs1"></div>
@@ -644,13 +648,15 @@ function createPlanningCell(day, time, col) {
             event.target.classList.add('selected');
         }
         
-        function showTab(day) {
-            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-            
-            event.target.classList.add('active');
-            document.getElementById(day).classList.add('active');
-        }
+       function showTab(day) {
+    document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById(day).classList.add('active');
+    if(day === 'synthese') {
+        updateStatsTable();
+    }
+}
         
         function clearAll() {
             if (confirm('Êtes-vous sûr de vouloir effacer tous les plannings ?')) {
@@ -806,6 +812,56 @@ function handleExcelImportAllDays(event) {
         }
     };
     reader.readAsArrayBuffer(file);
+}
+        function updateStatsTable() {
+    // { personne: { poste: durée, ... }, ... }
+    const personPosteTimes = {};
+    let totalMinutes = 0;
+    days.forEach(day => {
+        timeSlots.forEach(time => {
+            columns.forEach(col => {
+                const value = planningData[day][time][col];
+                if (value && value.trim() !== '') {
+                    // On suppose que la personne est indiquée dans la cellule, sous la forme "poste (Nom)" ou "Nom"
+                    let poste = value;
+                    let personne = '';
+                    // Si l’utilisateur écrit "BVS1 (Michel)" ou "Michel"
+                    const match = value.match(/^([^(]+)\s*\(([^)]+)\)$/);
+                    if (match) {
+                        poste = match[1].trim();
+                        personne = match[2].trim();
+                    } else {
+                        // Si la cellule ne contient qu’un nom, le poste est la colonne
+                        personne = value.trim();
+                        poste = col;
+                    }
+                    // Compte 5 min par créneau (ajuste si slot différent)
+                    personPosteTimes[personne] = personPosteTimes[personne] || {};
+                    personPosteTimes[personne][poste] = (personPosteTimes[personne][poste] || 0) + 5;
+                    totalMinutes += 5;
+                }
+            });
+        });
+    });
+
+    // Création du tableau HTML
+    let html = '<table class="planning-table"><tr><th>Personne</th><th>Poste</th><th>Temps (min)</th></tr>';
+    let totalParPersonne = {};
+    for (const personne in personPosteTimes) {
+        for (const poste in personPosteTimes[personne]) {
+            html += `<tr><td>${personne}</td><td>${poste}</td><td>${personPosteTimes[personne][poste]}</td></tr>`;
+            totalParPersonne[personne] = (totalParPersonne[personne] || 0) + personPosteTimes[personne][poste];
+        }
+    }
+    html += '</table>';
+    html += '<br><b>Temps total par personne :</b><ul>';
+    for (const personne in totalParPersonne) {
+        html += `<li>${personne} : ${totalParPersonne[personne]} min</li>`;
+    }
+    html += '</ul>';
+    html += `<br><b>Temps global planifié :</b> ${totalMinutes} min`;
+
+    document.getElementById('stats-table').innerHTML = html;
 }
     </script>
 </body>
