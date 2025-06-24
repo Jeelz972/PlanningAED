@@ -813,29 +813,26 @@ function handleExcelImportAllDays(event) {
     };
     reader.readAsArrayBuffer(file);
 }
-        function updateStatsTable() {
+       function updateStatsTable() {
     // { personne: { poste: durée, ... }, ... }
     const personPosteTimes = {};
     let totalMinutes = 0;
+
     days.forEach(day => {
         timeSlots.forEach(time => {
             columns.forEach(col => {
                 const value = planningData[day][time][col];
                 if (value && value.trim() !== '') {
-                    // On suppose que la personne est indiquée dans la cellule, sous la forme "poste (Nom)" ou "Nom"
-                    let poste = value;
-                    let personne = '';
-                    // Si l’utilisateur écrit "BVS1 (Michel)" ou "Michel"
-                    const match = value.match(/^([^(]+)\s*\(([^)]+)\)$/);
+                    // On suppose : "poste (Nom)" ou juste "Nom"
+                    let poste = col;
+                    let personne = value.trim();
+
+                    const match = value.match(/^(.+?)\s*\((.+)\)$/);
                     if (match) {
                         poste = match[1].trim();
                         personne = match[2].trim();
-                    } else {
-                        // Si la cellule ne contient qu’un nom, le poste est la colonne
-                        personne = value.trim();
-                        poste = col;
                     }
-                    // Compte 5 min par créneau (ajuste si slot différent)
+                    
                     personPosteTimes[personne] = personPosteTimes[personne] || {};
                     personPosteTimes[personne][poste] = (personPosteTimes[personne][poste] || 0) + 5;
                     totalMinutes += 5;
@@ -844,22 +841,35 @@ function handleExcelImportAllDays(event) {
         });
     });
 
-    // Création du tableau HTML
-    let html = '<table class="planning-table"><tr><th>Personne</th><th>Poste</th><th>Temps (min)</th></tr>';
+    // Affichage
+    let html = '<table class="planning-table"><tr><th>Personne</th><th>Poste</th><th>Temps</th></tr>';
     let totalParPersonne = {};
+
     for (const personne in personPosteTimes) {
+        let sommePers = 0;
         for (const poste in personPosteTimes[personne]) {
-            html += `<tr><td>${personne}</td><td>${poste}</td><td>${personPosteTimes[personne][poste]}</td></tr>`;
-            totalParPersonne[personne] = (totalParPersonne[personne] || 0) + personPosteTimes[personne][poste];
+            const minutes = personPosteTimes[personne][poste];
+            sommePers += minutes;
+            html += `<tr>
+                <td>${personne}</td>
+                <td>${poste}</td>
+                <td>${minutes >= 60 ? (Math.floor(minutes/60) + 'h' + (minutes%60 ? (minutes%60).toString().padStart(2, '0') : '')) : minutes + ' min'}</td>
+            </tr>`;
         }
+        totalParPersonne[personne] = sommePers;
     }
     html += '</table>';
-    html += '<br><b>Temps total par personne :</b><ul>';
+
+    // Total par personne (tous postes confondus)
+    html += '<br><b>Total par personne (tous postes) :</b><ul>';
     for (const personne in totalParPersonne) {
-        html += `<li>${personne} : ${totalParPersonne[personne]} min</li>`;
+        const minutes = totalParPersonne[personne];
+        html += `<li>${personne} : ${minutes >= 60 ? (Math.floor(minutes/60) + 'h' + (minutes%60 ? (minutes%60).toString().padStart(2, '0') : '')) : minutes + ' min'}</li>`;
     }
     html += '</ul>';
-    html += `<br><b>Temps global planifié :</b> ${totalMinutes} min`;
+
+    // Temps global
+    html += `<br><b>Temps global planifié :</b> ${totalMinutes >= 60 ? (Math.floor(totalMinutes/60) + 'h' + (totalMinutes%60 ? (totalMinutes%60).toString().padStart(2, '0') : '')) : totalMinutes + ' min'}`;
 
     document.getElementById('stats-table').innerHTML = html;
 }
