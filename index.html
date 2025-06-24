@@ -826,8 +826,8 @@ function handleExcelImportAllDays(event) {
                     let personne = value.trim();
                     const match = value.match(/^(.+?)\s*\((.+)\)$/);
                     if (match) {
-                        poste = match[1].trim();
-                        personne = match[2].trim();
+                        poste = match[2].trim();
+                        personne = match[1].trim();
                     }
                     personPosteTimes[personne] = personPosteTimes[personne] || {};
                     personPosteTimes[personne][poste] = (personPosteTimes[personne][poste] || 0) + 5;
