@@ -822,12 +822,12 @@ function handleExcelImportAllDays(event) {
             columns.forEach(col => {
                 const value = planningData[day][time][col];
                 if (value && value.trim() !== '') {
-                    let poste = col;
-                    let personne = value.trim();
+                    let personne = col;
+                    let poste = value.trim();
                     const match = value.match(/^(.+?)\s*\((.+)\)$/);
                     if (match) {
-                        poste = match[2].trim();
-                        personne = match[1].trim();
+                        poste = match[1].trim();
+                        personne = match[2].trim();
                     }
                     personPosteTimes[personne] = personPosteTimes[personne] || {};
                     personPosteTimes[personne][poste] = (personPosteTimes[personne][poste] || 0) + 5;
