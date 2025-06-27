@@ -472,7 +472,6 @@ document.querySelectorAll('.planning-cell').forEach(cell => {
   });
 });
         function initializePlannings() {
-            const init = 0;
             days.forEach(day => {
                 createPlanningGrid(day);
             });
@@ -495,6 +494,9 @@ document.querySelectorAll('.planning-cell').forEach(cell => {
                     container.appendChild(cell);
                 });
             });
+            
+            // Appelle la fusion des cellules identiques seulement après avoir tout créé
+            mergeIdenticalCells(day);
         }
 
         
@@ -581,9 +583,6 @@ function createPlanningCell(day, time, col) {
 
     cell.appendChild(input);
     updateCellAppearance(cell, planningData[day][time][col]);
-    if(init>0){
-        mergeIdenticalCells(day);
-    }
     return cell;
 }
         
