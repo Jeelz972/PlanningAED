@@ -803,11 +803,19 @@ function generateSynthesePersonneVolume() {
                     if (!personMap[col]) personMap[col] = {};
                     if (!personMap[col][value]) personMap[col][value] = 0;
                     personMap[col][value] += 1;
-                    itemMap[personMap[value]];
+                   // Mise à jour de itemMap
+                if (!itemMap[value]) itemMap[value] = [];
+                // On cherche si la personne existe déjà pour ce value dans itemMap
+                let personEntry = itemMap[value].find(entry => entry.col === col);
+                if (personEntry) {
+                    personEntry.nbre += 1;
+                } else {
+                    itemMap[value].push({ col, nbre: 1 });
                 }
-            });
+            }
         });
     });
+});
 
     // Liste des personnes triées
     const allPeople = Object.keys(personMap).sort();
