@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Générateur de Planning Excel</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -275,6 +277,7 @@
 <!-- Bouton d'import -->
 <input type="file" id="import-excel" accept=".xlsx,.xls" style="display:none" />
 <button class="btn btn-primary" onclick="document.getElementById('import-excel').click()">Importer un fichier Excel</button>
+        <button class="btn btn-primary" onclick="generatePDF()">🖨️ Générer PDF imprimable</button>
         </div>
         
         <div class="activity-selector">
@@ -837,6 +840,55 @@ function formatDuree(minutes) {
         return h + 'h' + (m ? (m < 10 ? '0' : '') + m : '');
     }
     return minutes + ' min';
+}
+
+        function generatePDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'pt', format: 'a4', orientation: 'portrait' });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+
+    days.forEach((day, index) => {
+        if (index !== 0) doc.addPage();
+
+        doc.setFontSize(18);
+        doc.text(`Planning ${capitalizeFirstLetter(day)}`, pageWidth/2, 40, { align: "center" });
+
+        // Prépare les données du tableau
+        const tableColumns = ['Heure', ...columns];
+        const tableRows = [];
+        timeSlots.forEach(time => {
+            const row = [time];
+            columns.forEach(col => {
+                row.push(planningData[day][time][col] || '');
+            });
+            tableRows.push(row);
+        });
+
+        doc.autoTable({
+            head: [tableColumns],
+            body: tableRows,
+            startY: 60,
+            styles: {
+                fontSize: 7,
+                cellPadding: 2,
+                overflow: 'linebreak'
+            },
+            headStyles: {
+                fillColor: [102, 126, 234],
+                textColor: 255
+            },
+            margin: { left: 10, right: 10 },
+            theme: 'grid',
+            tableWidth: 'auto',
+        });
+    });
+
+    doc.save('planning_hebdomadaire.pdf');
+}
+
+function capitalizeFirstLetter(str) {
+    return str.charAt(0).toUpperCase() + str.slice(1);
 }
     </script>
 </body>
