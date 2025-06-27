@@ -388,6 +388,10 @@
   <h3>Synthèse du temps par poste et personne</h3>
   <div class="synthese-responsive"><div id="synthese-table"></div></div>
 </div>
+        <div id="syntheseJour" class="tab-content">
+  <h3>Synthèse du temps par poste et personne</h3>
+  <div class="synthese-responsive"><div id="synthese-table"></div></div>
+</div>
         <div class="legend">
             <div class="legend-item">
                 <div class="legend-color bvs1"></div>
@@ -674,6 +678,9 @@ function createPlanningCell(day, time, col) {
     if(day === 'synthese') {
         generateSynthesePersonneVolume();
     }
+            if(day === 'syntheseJour') {
+        generateSynthesePersonneParJour();
+    }
 }
         
         function clearAll() {
@@ -893,7 +900,46 @@ function formatDuree(minutes) {
     }
     return minutes + ' min';
 }
+function generateSynthesePersonneParJour() {
+    const slotDuration = 5; // ou 15 si tu utilises 15 minutes
+    const personDayMap = {}; // { personne: { lundi: n, mardi: n, ... } }
 
+    days.forEach(day => {
+        timeSlots.forEach(time => {
+            columns.forEach(col => {
+                const value = planningData[day][time][col];
+                if (value && value.trim() !== "") {
+                    if (!personDayMap[col]) personDayMap[col] = {};
+                    if (!personDayMap[col][day]) personDayMap[col][day] = 0;
+                    personDayMap[col][day] += 1;
+                }
+            });
+        });
+    });
+
+    // Liste personnes triées
+    const allPeople = Object.keys(personDayMap).sort();
+
+    // Construction du tableau HTML
+    let html = `<table class="table table-bordered"><thead><tr><th>Personne</th>`;
+    days.forEach(day => html += `<th>${day.charAt(0).toUpperCase() + day.slice(1)}</th>`);
+    html += `<th>Total</th></tr></thead><tbody>`;
+
+    allPeople.forEach(person => {
+        let total = 0;
+        html += `<tr><td>${person}</td>`;
+        days.forEach(day => {
+            const count = (personDayMap[person][day] || 0);
+            const minutes = count * slotDuration;
+            total += minutes;
+            html += `<td>${minutes > 0 ? formatHM(minutes) : ""}</td>`;
+        });
+        html += `<td><b>${total > 0 ? formatHM(total) : ""}</b></td></tr>`;
+    });
+
+    html += `</tbody></table>`;
+    document.getElementById("synthese-table").innerHTML = html;
+}
 function generatePDF() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ unit: 'pt', format: 'a4', orientation: 'portrait' });
