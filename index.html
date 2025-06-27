@@ -788,45 +788,43 @@ function handleExcelImportAllDays(event) {
     };
     reader.readAsArrayBuffer(file);
 }
-function generateSyntheseTable() {
-   // Création du tableau : poste (col) => [personnes...]
-const itemMap = {}; // ou personMap selon ton nom (mais ici c'est bien un "itemMap")
+function generateSyntheseVolume() {
+    // 1. Construire la structure : personne -> item -> nb de créneaux
+    const personMap = {};
+    const slotDuration = 5; // Durée d'un créneau en minutes (à adapter si besoin)
 
-days.forEach(day => {
-    timeSlots.forEach(time => {
-        columns.forEach(col => {
-            const value = planningData[day][time][col];
-            if (value && value.trim() !== "") {
-                if (!itemMap[col]) itemMap[col] = [];
-                if (!itemMap[col].includes(value)) { // Pour n’avoir la personne qu’une fois par item
-                    itemMap[col].push(value);
+    days.forEach(day => {
+        timeSlots.forEach(time => {
+            columns.forEach(col => {
+                const value = planningData[day][time][col];
+                if (value && value.trim() !== "") {
+                    if (!personMap[value]) personMap[value] = {};
+                    if (!personMap[value][col]) personMap[value][col] = 0;
+                    personMap[value][col] += 1; // Compte les créneaux
                 }
-            }
+            });
         });
     });
-});
 
-    // Trouve le maximum d'items pour l'affichage
-    let maxItems = 0;
-    Object.values(itemMap).forEach(arr => {
-        if (arr.length > maxItems) maxItems = arr.length;
-    });
+    // 2. Liste de toutes les personnes et items
+    const allPeople = Object.keys(personMap).sort();
+    const allItems = columns; // ou Array.from(new Set(columns))
 
-    // Construction du HTML
+    // 3. Générer l'entête du tableau
     let html = `<table class="table table-bordered"><thead><tr><th>Personne</th>`;
-    for (let i = 1; i <= maxItems; i++) {
-        html += `<th>Item ${i}</th>`;
-    }
+    allItems.forEach(item => html += `<th>${item}</th>`);
     html += `</tr></thead><tbody>`;
 
-    Object.entries(itemMap).forEach(([person, items]) => {
+    // 4. Générer les lignes (une par personne)
+    allPeople.forEach(person => {
         html += `<tr><td>${person}</td>`;
-        for (let i = 0; i < maxItems; i++) {
-            html += `<td>${items[i] ? items[i] : ""}</td>`;
-        }
+        allItems.forEach(item => {
+            const count = personMap[person][item] || 0;
+            const minutes = count * slotDuration;
+            html += `<td>${minutes > 0 ? minutes + " min" : ""}</td>`;
+        });
         html += `</tr>`;
     });
-
     html += `</tbody></table>`;
 
     document.getElementById("synthese-table").innerHTML = html;
