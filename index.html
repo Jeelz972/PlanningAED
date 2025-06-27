@@ -869,7 +869,7 @@ function generateSynthesePersonneVolume() {
     html += `<th>Total</th></tr></thead><tbody>`;
 
     allPeople.forEach(person => {
-        let totalMinutes = 0;
+        let totalMinutes = -5;
         html += `<tr><td>${person}</td>`;
         allItems.forEach(item => {
             const count = personMap[person][item] || 0;
@@ -927,7 +927,7 @@ function generateSynthesePersonneParJour() {
     html += `<th>Total</th></tr></thead><tbody>`;
 
     allPeople.forEach(person => {
-        let total = 0;
+        let total = -5;
         html += `<tr><td>${person}</td>`;
         days.forEach(day => {
             const count = (personDayMap[person][day] || 0);
