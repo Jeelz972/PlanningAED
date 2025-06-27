@@ -581,7 +581,7 @@ function createPlanningCell(day, time, col) {
 
     cell.appendChild(input);
     updateCellAppearance(cell, planningData[day][time][col]);
-    if(int>0){
+    if(init>0){
         mergeIdenticalCells(day);
     }
     return cell;
@@ -741,7 +741,7 @@ function createPlanningCell(day, time, col) {
         
         // Initialiser l'application
         initializePlannings();
-        const init = 1;
+        init = 1;
         // Sélectionner le premier poste par défaut
         document.querySelector('.activity-btn').classList.add('selected');
         document.addEventListener('mouseup', function() {
