@@ -353,7 +353,7 @@
         </div>
         <div id="synthese" class="tab-content">
     <h3>Synthèse du temps par poste et personne</h3>
-    <div id="stats-table"></div>
+    <div id="synthese-table"></div>
 </div>
         <div class="legend">
             <div class="legend-item">
@@ -639,7 +639,7 @@ function createPlanningCell(day, time, col) {
     event.target.classList.add('active');
     document.getElementById(day).classList.add('active');
     if(day === 'synthese') {
-        updateStatsTable();
+        generateSyntheseTable();
     }
 }
         
@@ -788,48 +788,46 @@ function handleExcelImportAllDays(event) {
     };
     reader.readAsArrayBuffer(file);
 }
- function updateStatsTable() {
-    const personPosteTimes = {};
-    let totalMinutes = 0;
+function generateSyntheseTable() {
+    // Map : personne -> [item1, item2, ...]
+    const personMap = {};
 
     days.forEach(day => {
         timeSlots.forEach(time => {
             columns.forEach(col => {
                 const value = planningData[day][time][col];
-                if (value && value.trim() !== '') {
-                    let personne = col;
-                    let poste = value.trim();
-                    const match = value.match(/^(.+?)\s*\((.+)\)$/);
-                    if (match) {
-                        poste = match[1].trim();
-                        personne = match[2].trim();
-                    }
-                    personPosteTimes[personne] = personPosteTimes[personne] || {};
-                    personPosteTimes[personne][poste] = (personPosteTimes[personne][poste] || 0) + 5;
-                    totalMinutes += 5;
+                if (value && value.trim() !== "") {
+                    if (!personMap[value]) personMap[value] = [];
+                    personMap[value].push(col); // Ajoute l’item (poste)
                 }
             });
         });
     });
 
-    let html = '<div style="margin-bottom:1em"><b>Récapitulatif par personne :</b></div>';
-    html += '<table class="planning-table"><tr><th>Personne</th><th>Détail</th></tr>';
+    // Trouve le maximum d'items pour l'affichage
+    let maxItems = 0;
+    Object.values(personMap).forEach(arr => {
+        if (arr.length > maxItems) maxItems = arr.length;
+    });
 
-    for (const personne in personPosteTimes) {
-        let details = [];
-        let totalPers = 0;
-        for (const poste in personPosteTimes[personne]) {
-            const mins = personPosteTimes[personne][poste];
-            details.push(`${poste} = ${formatDuree(mins)}`);
-            totalPers += mins;
-        }
-        details.push(`<b>temps travail global = ${formatDuree(totalPers)}</b>`);
-        html += `<tr><td><b>${personne}</b></td><td>${details.join(' ; ')}</td></tr>`;
+    // Construction du HTML
+    let html = `<table class="table table-bordered"><thead><tr><th>Personne</th>`;
+    for (let i = 1; i <= maxItems; i++) {
+        html += `<th>Item ${i}</th>`;
     }
-    html += '</table>';
+    html += `</tr></thead><tbody>`;
 
-    html += `<br><b>Temps global planifié :</b> ${formatDuree(totalMinutes)}`;
-    document.getElementById('stats-table').innerHTML = html;
+    Object.entries(personMap).forEach(([person, items]) => {
+        html += `<tr><td>${person}</td>`;
+        for (let i = 0; i < maxItems; i++) {
+            html += `<td>${items[i] ? items[i] : ""}</td>`;
+        }
+        html += `</tr>`;
+    });
+
+    html += `</tbody></table>`;
+
+    document.getElementById("synthese-table").innerHTML = html;
 }
 
 // Helper : minutes → format "XhYY" ou "ZZ min"
