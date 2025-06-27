@@ -684,6 +684,7 @@ function createPlanningCell(day, time, col) {
     for (let col = 0; col < cols; col++) {
         cellsMatrix[col] = [];
         for (let row = 0; row < rows; row++) {
+              const idx = row * (cols + 1) + (col + 1);
             cellsMatrix[col][row] = grid.children[idx];
         }
     }
