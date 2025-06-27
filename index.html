@@ -651,8 +651,6 @@ function createPlanningCell(day, time, col) {
             }
         }
         function mergeIdenticalCells(day) {
-           
-            const cols = columns.length;
             for (let col = 0; col < cols; col++) {
     for (let row = 0; row < rows; row++) {
         if (cellsMatrix[col][row]) {
