@@ -842,29 +842,81 @@ function formatDuree(minutes) {
     return minutes + ' min';
 }
 
-        function generatePDF() {
+function generatePDF() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ unit: 'pt', format: 'a4', orientation: 'portrait' });
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
 
-    days.forEach((day, index) => {
-        if (index !== 0) doc.addPage();
+    // Dictionnaire pour retrouver la couleur CSS de chaque type d'item
+    const activityColors = {
+        'bvs1': [233, 30, 99],
+        'bvs2': [255, 152, 0],
+        'portail': [255, 87, 34],
+        'voltige': [33, 150, 243],
+        'renfort': [121, 85, 72],
+        'cours-impaire': [76, 175, 80],
+        'cours-paire': [139, 195, 74],
+        'etude-impaire': [156, 39, 176],
+        'etude-paire': [103, 58, 183],
+        'ap': [0, 150, 136],
+        'hall': [96, 125, 139],
+        'refectoire': [255, 111, 0],
+        'turbo': [244, 67, 54],
+        'bureau-midi': [63, 81, 181],
+        'pause': [158, 158, 158],
+        'marsons': [0, 188, 212]
+    };
+
+    function getActivityKey(value) {
+        if (!value) return null;
+        let key = value.toLowerCase()
+            .replace(/\s+/g, '-')
+            .replace('renfort-surveillance', 'renfort')
+            .replace('réfectoire', 'refectoire');
+        return activityColors[key] ? key : null;
+    }
+
+    days.forEach((day, dayIdx) => {
+        if (dayIdx !== 0) doc.addPage();
 
         doc.setFontSize(18);
-        doc.text(`Planning ${capitalizeFirstLetter(day)}`, pageWidth/2, 40, { align: "center" });
+        doc.text(`Planning ${day.charAt(0).toUpperCase() + day.slice(1)}`, 300, 40, { align: "center" });
 
-        // Prépare les données du tableau
+        // Construire le tableau fusionné
         const tableColumns = ['Heure', ...columns];
         const tableRows = [];
-        timeSlots.forEach(time => {
-            const row = [time];
-            columns.forEach(col => {
-                row.push(planningData[day][time][col] || '');
-            });
-            tableRows.push(row);
-        });
 
+        // On va construire les cellules fusionnées verticalement
+        for (let row = 0; row < timeSlots.length; row++) {
+            let tableRow = [timeSlots[row]];
+            for (let col = 0; col < columns.length; col++) {
+                // Fusion verticale : ne remplir que la première cellule d'une séquence identique
+                let value = planningData[day][timeSlots[row]][columns[col]];
+                let rowspan = 1;
+                if (value) {
+                    // Compte combien de lignes consécutives avec la même valeur
+                    while (
+                        row + rowspan < timeSlots.length &&
+                        planningData[day][timeSlots[row + rowspan]][columns[col]] === value
+                    ) {
+                        rowspan++;
+                    }
+                    // Si ce n'est pas la suite d'une fusion précédente, on met la valeur
+                    if (
+                        row === 0 ||
+                        planningData[day][timeSlots[row - 1]][columns[col]] !== value
+                    ) {
+                        tableRow.push({ content: value, rowSpan: rowspan });
+                    } else {
+                        tableRow.push('');
+                    }
+                } else {
+                    tableRow.push('');
+                }
+            }
+            tableRows.push(tableRow);
+        }
+
+        // autoTable avec fusion de cellules verticales et couleurs personnalisées
         doc.autoTable({
             head: [tableColumns],
             body: tableRows,
@@ -872,7 +924,9 @@ function formatDuree(minutes) {
             styles: {
                 fontSize: 7,
                 cellPadding: 2,
-                overflow: 'linebreak'
+                overflow: 'linebreak',
+                halign: 'center',
+                valign: 'middle'
             },
             headStyles: {
                 fillColor: [102, 126, 234],
@@ -881,14 +935,27 @@ function formatDuree(minutes) {
             margin: { left: 10, right: 10 },
             theme: 'grid',
             tableWidth: 'auto',
+            didDrawCell: function (data) {
+                if (data.section === 'body' && data.cell.raw && data.cell.raw.content) {
+                    const key = getActivityKey(data.cell.raw.content);
+                    if (key && activityColors[key]) {
+                        doc.setFillColor(...activityColors[key]);
+                        doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
+                        doc.setTextColor(255,255,255);
+                        doc.text(
+                            String(data.cell.raw.content),
+                            data.cell.x + data.cell.width / 2,
+                            data.cell.y + data.cell.height / 2 + 2,
+                            { align: 'center', baseline: 'middle' }
+                        );
+                        doc.setTextColor(0,0,0); // reset pour cellules suivantes
+                    }
+                }
+            }
         });
     });
 
     doc.save('planning_hebdomadaire.pdf');
-}
-
-function capitalizeFirstLetter(str) {
-    return str.charAt(0).toUpperCase() + str.slice(1);
 }
     </script>
 </body>
