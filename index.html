@@ -495,6 +495,15 @@ document.querySelectorAll('.planning-cell').forEach(cell => {
                 });
             });
         }
+
+        
+        function createCell(content, className) {
+            const cell = document.createElement('div');
+            cell.className = className;
+            cell.textContent = content;
+            return cell;
+        }
+        
 function createPlanningCell(day, time, col) {
     const cell = document.createElement('div');
     cell.className = 'planning-cell';
@@ -574,35 +583,6 @@ function createPlanningCell(day, time, col) {
     mergeIdenticalCells(day);
     return cell;
 }
-        
-        function createCell(content, className) {
-            const cell = document.createElement('div');
-            cell.className = className;
-            cell.textContent = content;
-            return cell;
-        }
-        
-        function createPlanningCell(day, time, col) {
-            const cell = document.createElement('div');
-            cell.className = 'planning-cell';
-            cell.onclick = function() {
-                if (selectedActivity) {
-                    updateCell(day, time, col, selectedActivity);
-                }
-            };
-            
-            const input = document.createElement('input');
-            input.type = 'text';
-            input.value = planningData[day][time][col];
-            input.onchange = function() {
-                planningData[day][time][col] = this.value;
-                updateCellAppearance(cell, this.value);
-            };
-            
-            cell.appendChild(input);
-            updateCellAppearance(cell, planningData[day][time][col]);
-            return cell;
-        }
         
         function updateCell(day, time, col, activity) {
             planningData[day][time][col] = activity;
