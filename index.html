@@ -793,6 +793,7 @@ function generateSynthesePersonneVolume() {
     const slotDuration = 5; // change à 15 si besoin
     // Création du mapping personne -> item -> nbre de créneaux
     const personMap = {};
+    const itemMap = {};
 
     days.forEach(day => {
         timeSlots.forEach(time => {
@@ -802,6 +803,7 @@ function generateSynthesePersonneVolume() {
                     if (!personMap[col]) personMap[col] = {};
                     if (!personMap[col][value]) personMap[col][value] = 0;
                     personMap[col][value] += 1;
+                    itemMap[personMap[value]];
                 }
             });
         });
@@ -810,7 +812,7 @@ function generateSynthesePersonneVolume() {
     // Liste des personnes triées
     const allPeople = Object.keys(personMap).sort();
     // Liste des items (postes)
-    const allItems = columns;
+    const allItems = Object.keys(itemMap).sort();;
 
     // Construction du tableau HTML
     let html = `<table class="table table-bordered"><thead><tr><th>Personne</th>`;
