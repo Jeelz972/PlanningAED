@@ -665,8 +665,6 @@ function createPlanningCell(day, time, col) {
 }
     const grid = document.getElementById('planning-' + day);
     if (!grid) return;
-    const rows = timeSlots.length;
-    const cols = columns.length;
     // Stocker les cellules par colonne
     const cellsMatrix = [];
     for (let col = 0; col < cols; col++) {
