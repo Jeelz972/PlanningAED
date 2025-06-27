@@ -789,24 +789,26 @@ function handleExcelImportAllDays(event) {
     reader.readAsArrayBuffer(file);
 }
 function generateSyntheseTable() {
-    // Map : personne -> [item1, item2, ...]
-    const personMap = {};
+   // Création du tableau : poste (col) => [personnes...]
+const itemMap = {}; // ou personMap selon ton nom (mais ici c'est bien un "itemMap")
 
-    days.forEach(day => {
-        timeSlots.forEach(time => {
-            columns.forEach(col => {
-                const value = planningData[day][time][col];
-                if (value && value.trim() !== "") {
-                    if (!personMap[value]) personMap[value] = [];
-                    personMap[value].push(col); // Ajoute l’item (poste)
+days.forEach(day => {
+    timeSlots.forEach(time => {
+        columns.forEach(col => {
+            const value = planningData[day][time][col];
+            if (value && value.trim() !== "") {
+                if (!itemMap[col]) itemMap[col] = [];
+                if (!itemMap[col].includes(value)) { // Pour n’avoir la personne qu’une fois par item
+                    itemMap[col].push(value);
                 }
-            });
+            }
         });
     });
+});
 
     // Trouve le maximum d'items pour l'affichage
     let maxItems = 0;
-    Object.values(personMap).forEach(arr => {
+    Object.values(itemMap).forEach(arr => {
         if (arr.length > maxItems) maxItems = arr.length;
     });
 
@@ -817,7 +819,7 @@ function generateSyntheseTable() {
     }
     html += `</tr></thead><tbody>`;
 
-    Object.entries(personMap).forEach(([person, items]) => {
+    Object.entries(itemMap).forEach(([person, items]) => {
         html += `<tr><td>${person}</td>`;
         for (let i = 0; i < maxItems; i++) {
             html += `<td>${items[i] ? items[i] : ""}</td>`;
