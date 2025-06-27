@@ -657,6 +657,8 @@ function createPlanningCell(day, time, col) {
             const cols = columns.length;
                 // Stocker les cellules par colonne
             const cellsMatrix = [];
+            const grid = document.getElementById('planning-' + day);
+            
             for (let col = 0; col < cols; col++) {
                 cellsMatrix[col] = [];
             for (let row = 0; row < rows; row++) {
@@ -677,14 +679,11 @@ function createPlanningCell(day, time, col) {
         }
     }
 }
-    const grid = document.getElementById('planning-' + day);
-    if (!grid) return;
 
+    if (!grid) return;
     for (let col = 0; col < cols; col++) {
         cellsMatrix[col] = [];
         for (let row = 0; row < rows; row++) {
-            // L’indice de la div = row * nbColonnes + col + 1 (car time-slot en début)
-            const idx = row * (cols + 1) + (col + 1);
             cellsMatrix[col][row] = grid.children[idx];
         }
     }
