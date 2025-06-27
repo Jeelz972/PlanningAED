@@ -654,9 +654,21 @@ function createPlanningCell(day, time, col) {
         }
         function mergeIdenticalCells(day) {
             const rows = timeSlots.length;
-    const cols = columns.length;
+            const cols = columns.length;
                 // Stocker les cellules par colonne
-    const cellsMatrix = [];
+            const cellsMatrix = [];
+            for (let col = 0; col < cols; col++) {
+                cellsMatrix[col] = [];
+            for (let row = 0; row < rows; row++) {
+                const idx = row * (cols + 1) + (col + 1);
+            // Vérifie que l’index existe
+                if (grid.children[idx]) {
+                    cellsMatrix[col][row] = grid.children[idx];
+                } else {
+                    cellsMatrix[col][row] = null;
+                }
+            }
+        }
             for (let col = 0; col < cols; col++) {
     for (let row = 0; row < rows; row++) {
         if (cellsMatrix[col][row]) {
