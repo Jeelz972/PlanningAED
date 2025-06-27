@@ -788,10 +788,11 @@ function handleExcelImportAllDays(event) {
     };
     reader.readAsArrayBuffer(file);
 }
-function generateSyntheseVolume() {
-    // 1. Construire la structure : personne -> item -> nb de créneaux
+function generateSynthesePersonneVolume() {
+    // Durée d'un créneau en minutes (à ADAPTER selon ton planning)
+    const slotDuration = 5; // change à 15 si besoin
+    // Création du mapping personne -> item -> nbre de créneaux
     const personMap = {};
-    const slotDuration = 5; // Durée d'un créneau en minutes (à adapter si besoin)
 
     days.forEach(day => {
         timeSlots.forEach(time => {
@@ -800,34 +801,44 @@ function generateSyntheseVolume() {
                 if (value && value.trim() !== "") {
                     if (!personMap[value]) personMap[value] = {};
                     if (!personMap[value][col]) personMap[value][col] = 0;
-                    personMap[value][col] += 1; // Compte les créneaux
+                    personMap[value][col] += 1;
                 }
             });
         });
     });
 
-    // 2. Liste de toutes les personnes et items
+    // Liste des personnes triées
     const allPeople = Object.keys(personMap).sort();
-    const allItems = columns; // ou Array.from(new Set(columns))
+    // Liste des items (postes)
+    const allItems = columns;
 
-    // 3. Générer l'entête du tableau
+    // Construction du tableau HTML
     let html = `<table class="table table-bordered"><thead><tr><th>Personne</th>`;
     allItems.forEach(item => html += `<th>${item}</th>`);
-    html += `</tr></thead><tbody>`;
+    html += `<th>Total</th></tr></thead><tbody>`;
 
-    // 4. Générer les lignes (une par personne)
     allPeople.forEach(person => {
+        let totalMinutes = 0;
         html += `<tr><td>${person}</td>`;
         allItems.forEach(item => {
             const count = personMap[person][item] || 0;
             const minutes = count * slotDuration;
-            html += `<td>${minutes > 0 ? minutes + " min" : ""}</td>`;
+            totalMinutes += minutes;
+            html += `<td>${minutes > 0 ? formatHM(minutes) : ""}</td>`;
         });
-        html += `</tr>`;
+        html += `<td><b>${totalMinutes > 0 ? formatHM(totalMinutes) : ""}</b></td></tr>`;
     });
-    html += `</tbody></table>`;
 
+    html += `</tbody></table>`;
     document.getElementById("synthese-table").innerHTML = html;
+}
+
+// Format X min => HhMMmin
+function formatHM(mins) {
+    if (mins <= 0) return "";
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return h > 0 ? `${h}h${m > 0 ? m : ""}` : `${m}min`;
 }
 
 // Helper : minutes → format "XhYY" ou "ZZ min"
