@@ -799,9 +799,9 @@ function generateSynthesePersonneVolume() {
             columns.forEach(col => {
                 const value = planningData[day][time][col];
                 if (value && value.trim() !== "") {
-                    if (!personMap[value]) personMap[value] = {};
-                    if (!personMap[value][col]) personMap[value][col] = 0;
-                    personMap[value][col] += 1;
+                    if (!personMap[col]) personMap[col] = {};
+                    if (!personMap[col][value]) personMap[col][value] = 0;
+                    personMap[col][value] += 1;
                 }
             });
         });
