@@ -979,6 +979,10 @@ function generateSynthesePersonneParJour() {
             let intensite = Math.min((val - moyenne) / moyenne, 1);
             let color = `rgba(255, 140, 0, ${0.3 + 0.7 * intensite})`;
             row.style.backgroundColor = color;
+        }if (val < moyenne) {
+            let intensite = Math.min((val - moyenne) / moyenne, 1);
+            let color = `rgba(238,130,238, ${0.3 + 0.7 * intensite})`;
+            row.style.backgroundColor = color;
         } else {
             row.style.backgroundColor = '';
         }
