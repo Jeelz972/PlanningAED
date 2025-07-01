@@ -948,16 +948,16 @@ function colorerSyntheseParItem() {
     const rows = Array.from(table.querySelectorAll('tbody tr'));
     if (rows.length === 0) return;
 
-    // Récupération des items (postes) depuis l'en-tête
+    // Récupère les items (postes) depuis l'en-tête
     const ths = Array.from(table.querySelectorAll('thead th'));
     const items = ths.slice(1, -1).map(th => th.textContent.trim()); // Ignore "Personne" et "Total"
 
-    // Pour chaque colonne (poste), calcule la moyenne
+    // Calcule la moyenne pour chaque poste
     let moyennes = [];
     items.forEach((item, colIdx) => {
         let total = 0, count = 0;
         rows.forEach(row => {
-            const cell = row.querySelectorAll('td')[colIdx + 1]; // +1 car première colonne = personne
+            const cell = row.querySelectorAll('td')[colIdx + 1];
             if (!cell) return;
             let minutes = 0;
             let m = cell.textContent.match(/(\d+)h(\d+)?/);
@@ -975,7 +975,7 @@ function colorerSyntheseParItem() {
         moyennes[colIdx] = count ? total / count : 0;
     });
 
-    // Coloration des cellules > moyenne de leur poste
+    // Applique les couleurs si l'écart dépasse ±60 min
     rows.forEach(row => {
         const cells = row.querySelectorAll('td');
         items.forEach((item, colIdx) => {
@@ -989,10 +989,19 @@ function colorerSyntheseParItem() {
                 let m2 = cell.textContent.match(/(\d+)min/);
                 if (m2) minutes = parseInt(m2[1]);
             }
-            // Seulement si au-dessus de la moyenne et pas vide
-            if (minutes > moyennes[colIdx] && minutes > 0) {
-                let intensite = Math.min((minutes - moyennes[colIdx]) / (moyennes[colIdx] || 1), 1);
-                let color = `rgba(255, 140, 0, ${0.3 + 0.7 * intensite})`;
+            let moyenne = moyennes[colIdx] || 0;
+            let color = '';
+            let ecart = minutes - moyenne;
+            if (minutes > 0 && Math.abs(ecart) > 60) {
+                if (ecart > 60) {
+                    // Violet, intensité selon l'écart positif
+                    let intensite = Math.min((ecart - 60) / (moyenne || 1), 1);
+                    color = `rgba(138, 43, 226, ${0.3 + 0.7 * intensite})`;
+                } else if (ecart < -60) {
+                    // Orange, intensité selon l'écart négatif
+                    let intensite = Math.min((-ecart - 60) / (moyenne || 1), 1);
+                    color = `rgba(255, 140, 0, ${0.3 + 0.7 * intensite})`;
+                }
                 cell.style.backgroundColor = color;
                 cell.style.fontWeight = "bold";
             } else {
