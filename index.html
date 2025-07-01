@@ -739,7 +739,35 @@ function createPlanningCell(day, time, col) {
     }
 }
        function generateExcel() {
-    const wb = XLSX.utils.book_new();
+     const wb = XLSX.utils.book_new();
+
+    // Couleurs identiques à ton code
+    const activityColors = {
+        'bvs1': 'FFC91E63',
+        'bvs2': 'FFFF9800',
+        'portail': 'FFFF5722',
+        'voltige': 'FF2196F3',
+        'renfort': 'FF795548',
+        'cours-impaire': 'FF4CAF50',
+        'cours-paire': 'FF8BC34A',
+        'etude-impaire': 'FF9C27B0',
+        'etude-paire': 'FF673AB7',
+        'ap': 'FF009688',
+        'hall': 'FF607D8B',
+        'refectoire': 'FFFF6F00',
+        'turbo': 'FFF44336',
+        'bureau-midi': 'FF3F51B5',
+        'pause': 'FF9E9E9E',
+        'marsons': 'FF00BCD4'
+    };
+    function getActivityKey(value) {
+        if (!value) return null;
+        let key = value.toLowerCase()
+            .replace(/\s+/g, '-')
+            .replace('renfort-surveillance', 'renfort')
+            .replace('réfectoire', 'refectoire');
+        return activityColors[key] ? key : null;
+    }
 
     days.forEach(day => {
         const wsData = [];
@@ -757,42 +785,50 @@ function createPlanningCell(day, time, col) {
 
         const ws = XLSX.utils.aoa_to_sheet(wsData);
 
-        // Fusion des cellules identiques verticalement (par colonne)
+        // Ajout des couleurs
+        for(let r=1; r<wsData.length; r++) { // r=1 pour ignorer l'entête
+            for(let c=1; c<=columns.length; c++) { // c=1 car colonne 0 = heure
+                const value = wsData[r][c];
+                const colorKey = getActivityKey(value);
+                if (colorKey) {
+                    const cellAddress = XLSX.utils.encode_cell({r, c});
+                    if (!ws[cellAddress]) ws[cellAddress] = { t: 's', v: value };
+                    ws[cellAddress].s = {
+                        fill: { fgColor: { rgb: activityColors[colorKey] } },
+                        font: { color: { rgb: "FFFFFFFF" }, bold: true }
+                    };
+                }
+            }
+        }
+
+        // Fusion des cellules (déjà vu précédemment)
         ws['!merges'] = [];
         columns.forEach((col, colIdx) => {
-            let start = 1; // commence après le header (ligne 0)
+            let start = 1;
             let value = wsData[start][colIdx + 1];
-
             for (let row = 2; row < wsData.length; row++) {
                 if (wsData[row][colIdx + 1] !== value) {
                     if (row - start > 1 && value) {
-                        ws['!merges'].push({
-                            s: { r: start, c: colIdx + 1 },   // début (row, col)
-                            e: { r: row - 1, c: colIdx + 1 } // fin (row, col)
-                        });
+                        ws['!merges'].push({ s: { r: start, c: colIdx + 1 }, e: { r: row - 1, c: colIdx + 1 } });
                     }
                     start = row;
                     value = wsData[row][colIdx + 1];
                 }
             }
-            // Dernière fusion éventuelle à la fin
             if (wsData.length - start > 1 && value) {
-                ws['!merges'].push({
-                    s: { r: start, c: colIdx + 1 },
-                    e: { r: wsData.length - 1, c: colIdx + 1 }
-                });
+                ws['!merges'].push({ s: { r: start, c: colIdx + 1 }, e: { r: wsData.length - 1, c: colIdx + 1 } });
             }
         });
 
         // Largeur des colonnes
-        const colWidths = [{ wch: 10 }];
-        columns.forEach(() => colWidths.push({ wch: 15 }));
-        ws['!cols'] = colWidths;
+        ws['!cols'] = [{ wch: 10 }];
+        columns.forEach(() => ws['!cols'].push({ wch: 15 }));
 
         XLSX.utils.book_append_sheet(wb, ws, day.charAt(0).toUpperCase() + day.slice(1));
     });
 
-    XLSX.writeFile(wb, 'EDT_hebdomadaire.xlsx');
+    // Sauvegarder en .xlsx pour garder la mise en forme
+    XLSX.writeFile(wb, 'planning_hebdomadaire.xlsx');
 }
         function updateCell(day, time, col, activity, refresh = true) {
     planningData[day][time][col] = activity;
