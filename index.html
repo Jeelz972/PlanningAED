@@ -882,6 +882,7 @@ function generateSynthesePersonneVolume() {
 
     html += `</tbody></table>`;
     document.getElementById("synthese-table").innerHTML = html;
+    colorerSyntheseEquipe(); // <-- Ajout ici
 }
 
 // Format X min => HhMMmin
@@ -940,6 +941,48 @@ function generateSynthesePersonneParJour() {
 
     html += `</tbody></table>`;
     document.getElementById("syntheseJour-table").innerHTML = html;
+}
+        function colorerSyntheseEquipe() {
+    const table = document.querySelector('#synthese-table table');
+    if (!table) return;
+    const rows = Array.from(table.querySelectorAll('tbody tr'));
+    if (rows.length === 0) return;
+
+    let total = 0, count = 0;
+    const valeurs = [];
+
+    // Parcourt chaque personne (ligne)
+    rows.forEach(row => {
+        // La dernière colonne c'est le total (XhYY)
+        const totalCell = row.querySelector('td:last-child');
+        if (!totalCell) return;
+        const m = totalCell.textContent.match(/(\d+)h(\d+)?/);
+        let minutes = 0;
+        if (m) {
+            minutes = parseInt(m[1]) * 60 + (m[2] ? parseInt(m[2]) : 0);
+        } else {
+            // Sinon, essaie en minutes seules
+            const m2 = totalCell.textContent.match(/(\d+)min/);
+            if (m2) minutes = parseInt(m2[1]);
+        }
+        valeurs.push(minutes);
+        total += minutes;
+        count++;
+    });
+    if (count === 0) return;
+    const moyenne = total / count;
+
+    // Applique la couleur selon l'écart
+    rows.forEach((row, idx) => {
+        const val = valeurs[idx];
+        if (val > moyenne) {
+            let intensite = Math.min((val - moyenne) / moyenne, 1);
+            let color = `rgba(255, 140, 0, ${0.3 + 0.7 * intensite})`;
+            row.style.backgroundColor = color;
+        } else {
+            row.style.backgroundColor = '';
+        }
+    });
 }
 function generatePDF() {
     const { jsPDF } = window.jspdf;
