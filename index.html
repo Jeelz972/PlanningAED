@@ -869,7 +869,7 @@ function generateSynthesePersonneVolume() {
     html += `<th>Total</th></tr></thead><tbody>`;
 
     allPeople.forEach(person => {
-        let totalMinutes = -5;
+        let totalMinutes = 0;
         html += `<tr><td>${person}</td>`;
         allItems.forEach(item => {
             const count = personMap[person][item] || 0;
