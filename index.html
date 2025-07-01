@@ -882,7 +882,7 @@ function generateSynthesePersonneVolume() {
 
     html += `</tbody></table>`;
     document.getElementById("synthese-table").innerHTML = html;
-    colorerSyntheseEquipe(); // <-- Ajout ici
+    colorerSyntheseParItem(); // <-- Ajout ici
 }
 
 // Format X min => HhMMmin
@@ -942,50 +942,64 @@ function generateSynthesePersonneParJour() {
     html += `</tbody></table>`;
     document.getElementById("syntheseJour-table").innerHTML = html;
 }
-        function colorerSyntheseEquipe() {
+function colorerSyntheseParItem() {
     const table = document.querySelector('#synthese-table table');
     if (!table) return;
     const rows = Array.from(table.querySelectorAll('tbody tr'));
     if (rows.length === 0) return;
 
-    let total = 0, count = 0;
-    const valeurs = [];
+    // Récupération des items (postes) depuis l'en-tête
+    const ths = Array.from(table.querySelectorAll('thead th'));
+    const items = ths.slice(1, -1).map(th => th.textContent.trim()); // Ignore "Personne" et "Total"
 
-    // Parcourt chaque personne (ligne)
-    rows.forEach(row => {
-        // La dernière colonne c'est le total (XhYY)
-        const totalCell = row.querySelector('td:last-child');
-        if (!totalCell) return;
-        const m = totalCell.textContent.match(/(\d+)h(\d+)?/);
-        let minutes = 0;
-        if (m) {
-            minutes = parseInt(m[1]) * 60 + (m[2] ? parseInt(m[2]) : 0);
-        } else {
-            // Sinon, essaie en minutes seules
-            const m2 = totalCell.textContent.match(/(\d+)min/);
-            if (m2) minutes = parseInt(m2[1]);
-        }
-        valeurs.push(minutes);
-        total += minutes;
-        count++;
+    // Pour chaque colonne (poste), calcule la moyenne
+    let moyennes = [];
+    items.forEach((item, colIdx) => {
+        let total = 0, count = 0;
+        rows.forEach(row => {
+            const cell = row.querySelectorAll('td')[colIdx + 1]; // +1 car première colonne = personne
+            if (!cell) return;
+            let minutes = 0;
+            let m = cell.textContent.match(/(\d+)h(\d+)?/);
+            if (m) {
+                minutes = parseInt(m[1]) * 60 + (m[2] ? parseInt(m[2]) : 0);
+            } else {
+                let m2 = cell.textContent.match(/(\d+)min/);
+                if (m2) minutes = parseInt(m2[1]);
+            }
+            if (minutes > 0) {
+                total += minutes;
+                count++;
+            }
+        });
+        moyennes[colIdx] = count ? total / count : 0;
     });
-    if (count === 0) return;
-    const moyenne = total / count;
 
-    // Applique la couleur selon l'écart
-    rows.forEach((row, idx) => {
-        const val = valeurs[idx];
-        if (val > moyenne) {
-            let intensite = Math.min((val - moyenne) / moyenne, 1);
-            let color = `rgba(255, 140, 0, ${0.3 + 0.7 * intensite})`;
-            row.style.backgroundColor = color;
-        }if (val < moyenne) {
-            let intensite = Math.min((val - moyenne) / moyenne, 1);
-            let color = `rgba(238,130,238, ${0.3 + 0.7 * intensite})`;
-            row.style.backgroundColor = color;
-        } else {
-            row.style.backgroundColor = '';
-        }
+    // Coloration des cellules > moyenne de leur poste
+    rows.forEach(row => {
+        const cells = row.querySelectorAll('td');
+        items.forEach((item, colIdx) => {
+            const cell = cells[colIdx + 1];
+            if (!cell) return;
+            let minutes = 0;
+            let m = cell.textContent.match(/(\d+)h(\d+)?/);
+            if (m) {
+                minutes = parseInt(m[1]) * 60 + (m[2] ? parseInt(m[2]) : 0);
+            } else {
+                let m2 = cell.textContent.match(/(\d+)min/);
+                if (m2) minutes = parseInt(m2[1]);
+            }
+            // Seulement si au-dessus de la moyenne et pas vide
+            if (minutes > moyennes[colIdx] && minutes > 0) {
+                let intensite = Math.min((minutes - moyennes[colIdx]) / (moyennes[colIdx] || 1), 1);
+                let color = `rgba(255, 140, 0, ${0.3 + 0.7 * intensite})`;
+                cell.style.backgroundColor = color;
+                cell.style.fontWeight = "bold";
+            } else {
+                cell.style.backgroundColor = '';
+                cell.style.fontWeight = '';
+            }
+        });
     });
 }
 function generatePDF() {
