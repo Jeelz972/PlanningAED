@@ -931,7 +931,7 @@ function generateSynthesePersonneParJour() {
         html += `<tr><td>${person}</td>`;
         days.forEach(day => {
             const count = (personDayMap[person][day] || 0);
-            const minutes = count * slotDuration - 5;
+            const minutes = count * slotDuration;
             total += minutes;
             html += `<td>${minutes > 0 ? formatHM(minutes) : ""}</td>`;
         });
