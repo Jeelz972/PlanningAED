@@ -927,7 +927,7 @@ function generateSynthesePersonneParJour() {
     html += `<th>Total</th></tr></thead><tbody>`;
 
     allPeople.forEach(person => {
-        let total = -5;
+        let total = 0;
         html += `<tr><td>${person}</td>`;
         days.forEach(day => {
             const count = (personDayMap[person][day] || 0);
