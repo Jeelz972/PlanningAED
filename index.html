@@ -738,53 +738,62 @@ function createPlanningCell(day, time, col) {
         }
     }
 }
-        function generateExcel() {
-            const wb = XLSX.utils.book_new();
-            
-            days.forEach(day => {
-                const wsData = [];
-                
-                // Header row
-                const headerRow = ['Heure', ...columns];
-                wsData.push(headerRow);
-                
-                // Data rows
-                timeSlots.forEach(time => {
-                    const row = [time];
-                    columns.forEach(col => {
-                        row.push(planningData[day][time][col] || '');
-                    });
-                    wsData.push(row);
-                });
-                
-                const ws = XLSX.utils.aoa_to_sheet(wsData);
-                
-                // Définir la largeur des colonnes
-                const colWidths = [{ wch: 10 }];
-                columns.forEach(() => colWidths.push({ wch: 15 }));
-                ws['!cols'] = colWidths;
-                
-                // Ajouter la feuille au workbook
-                XLSX.utils.book_append_sheet(wb, ws, day.charAt(0).toUpperCase() + day.slice(1));
+       function generateExcel() {
+    const wb = XLSX.utils.book_new();
+
+    days.forEach(day => {
+        const wsData = [];
+        const headerRow = ['Heure', ...columns];
+        wsData.push(headerRow);
+
+        // Génération des données ligne par ligne
+        timeSlots.forEach(time => {
+            const row = [time];
+            columns.forEach(col => {
+                row.push(planningData[day][time][col] || '');
             });
-            
-            // Sauvegarder le fichier
-            XLSX.writeFile(wb, 'planning_hebdomadaire.xlsx');
-        }
-        
-        // Initialiser l'application
-        initializePlannings();
-        init = 1;
-        // Sélectionner le premier poste par défaut
-        document.querySelector('.activity-btn').classList.add('selected');
-        document.addEventListener('mouseup', function() {
-    isMouseDown = false;
-    dragActivity = null;
-    startDay = null;
-    startCol = null;
-    startRow = null;
-    document.body.style.userSelect = "";
-});
+            wsData.push(row);
+        });
+
+        const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+        // Fusion des cellules identiques verticalement (par colonne)
+        ws['!merges'] = [];
+        columns.forEach((col, colIdx) => {
+            let start = 1; // commence après le header (ligne 0)
+            let value = wsData[start][colIdx + 1];
+
+            for (let row = 2; row < wsData.length; row++) {
+                if (wsData[row][colIdx + 1] !== value) {
+                    if (row - start > 1 && value) {
+                        ws['!merges'].push({
+                            s: { r: start, c: colIdx + 1 },   // début (row, col)
+                            e: { r: row - 1, c: colIdx + 1 } // fin (row, col)
+                        });
+                    }
+                    start = row;
+                    value = wsData[row][colIdx + 1];
+                }
+            }
+            // Dernière fusion éventuelle à la fin
+            if (wsData.length - start > 1 && value) {
+                ws['!merges'].push({
+                    s: { r: start, c: colIdx + 1 },
+                    e: { r: wsData.length - 1, c: colIdx + 1 }
+                });
+            }
+        });
+
+        // Largeur des colonnes
+        const colWidths = [{ wch: 10 }];
+        columns.forEach(() => colWidths.push({ wch: 15 }));
+        ws['!cols'] = colWidths;
+
+        XLSX.utils.book_append_sheet(wb, ws, day.charAt(0).toUpperCase() + day.slice(1));
+    });
+
+    XLSX.writeFile(wb, 'planning_hebdomadaire.xlsx');
+}
         function updateCell(day, time, col, activity, refresh = true) {
     planningData[day][time][col] = activity;
     if (refresh) createPlanningGrid(day);
