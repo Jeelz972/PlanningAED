@@ -830,6 +830,32 @@ function createPlanningCell(day, time, col) {
     // Sauvegarder en .xlsx pour garder la mise en forme
     XLSX.writeFile(wb, 'planning_hebdomadaire.xlsx');
 }*/
+
+        function generateExcel() {
+    let html = "<table border='1'><tr><th>Heure</th>";
+    columns.forEach(col => html += `<th>${col}</th>`);
+    html += "</tr>";
+    timeSlots.forEach(time => {
+        html += `<tr><td>${time}</td>`;
+        columns.forEach(col => {
+            const value = planningData['lundi'][time][col] || '';
+            let colorStyle = '';
+            // Ajoute ici ta logique de couleurs
+            if (value === 'BVS1') colorStyle = "background:#e91e63;color:#fff;";
+            // Ajoute d'autres couleurs si besoin
+            html += `<td style="${colorStyle}">${value}</td>`;
+        });
+        html += "</tr>";
+    });
+    html += "</table>";
+    const blob = new Blob([html], {type:"application/vnd.ms-excel"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "planning_colore.xls";
+    a.click();
+    URL.revokeObjectURL(url);
+}
         function updateCell(day, time, col, activity, refresh = true) {
     planningData[day][time][col] = activity;
     if (refresh) createPlanningGrid(day);
