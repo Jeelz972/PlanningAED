@@ -832,29 +832,109 @@ function createPlanningCell(day, time, col) {
 }*/
 
         function generateExcel() {
-    let html = "<table border='1'><tr><th>Heure</th>";
-    columns.forEach(col => html += `<th>${col}</th>`);
-    html += "</tr>";
-    timeSlots.forEach(time => {
-        html += `<tr><td>${time}</td>`;
+  const activityColors = {
+        'bvs1': '#e91e63',
+        'bvs2': '#ff9800',
+        'portail': '#ff5722',
+        'voltige': '#2196f3',
+        'renfort': '#795548',
+        'cours-impaire': '#4caf50',
+        'cours-paire': '#8bc34a',
+        'etude-impaire': '#9c27b0',
+        'etude-paire': '#673ab7',
+        'ap': '#009688',
+        'hall': '#607d8b',
+        'refectoire': '#ff6f00',
+        'turbo': '#f44336',
+        'bureau-midi': '#3f51b5',
+        'pause': '#9e9e9e',
+        'marsons': '#00bcd4'
+    };
+
+    function getActivityKey(value) {
+        if (!value) return null;
+        let key = value.toLowerCase()
+            .replace(/\s+/g, '-')
+            .replace('renfort-surveillance', 'renfort')
+            .replace('réfectoire', 'refectoire');
+        return activityColors[key] ? key : null;
+    }
+
+    days.forEach(day => {
+        let html = `<table border="1" cellspacing="0" cellpadding="2" style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:10pt"><tr><th style="background:#764ba2;color:#fff">Heure</th>`;
         columns.forEach(col => {
-            const value = planningData['lundi'][time][col] || '';
-            let colorStyle = '';
-            // Ajoute ici ta logique de couleurs
-            if (value === 'BVS1') colorStyle = "background:#e91e63;color:#fff;";
-            // Ajoute d'autres couleurs si besoin
-            html += `<td style="${colorStyle}">${value}</td>`;
+            html += `<th style="background:#667eea;color:#fff">${col}</th>`;
         });
         html += "</tr>";
+
+        // Pour chaque colonne/personne, détecte les séquences à fusionner
+        // On va d’abord créer une matrice: [row][col]
+        let cellMatrix = timeSlots.map(time =>
+            columns.map(col => planningData[day][time][col] || '')
+        );
+
+        // Structure pour savoir si une cellule doit être rendue (si fusionnée ailleurs, on ne la rend pas)
+        let renderMatrix = Array(timeSlots.length).fill().map(() => Array(columns.length).fill(true));
+        // Et le rowspan associé à chaque cellule
+        let rowspanMatrix = Array(timeSlots.length).fill().map(() => Array(columns.length).fill(1));
+
+        // Détection des fusions verticales (rowspan)
+        for (let col = 0; col < columns.length; col++) {
+            let start = 0;
+            while (start < timeSlots.length) {
+                let activity = cellMatrix[start][col];
+                let end = start;
+                while (
+                    end + 1 < timeSlots.length &&
+                    cellMatrix[end + 1][col] === activity &&
+                    activity !== ''
+                ) {
+                    end++;
+                }
+                let span = end - start + 1;
+                if (activity !== '' && span > 1) {
+                    rowspanMatrix[start][col] = span;
+                    // Les cellules à masquer (sauf la première du groupe)
+                    for (let i = start + 1; i <= end; i++) renderMatrix[i][col] = false;
+                }
+                start = end + 1;
+            }
+        }
+
+        // Rendu HTML ligne par ligne
+        for (let row = 0; row < timeSlots.length; row++) {
+            let hasContent = columns.some(colIdx => cellMatrix[row][colIdx] !== '');
+            if (!hasContent) continue; // Ne pas afficher les lignes vides
+
+            html += `<tr><td style="background:#f3f3f3;font-weight:bold">${timeSlots[row]}</td>`;
+            for (let col = 0; col < columns.length; col++) {
+                if (!renderMatrix[row][col]) continue; // Cellule fusionnée, ne pas l’afficher
+
+                const value = cellMatrix[row][col];
+                const colorKey = getActivityKey(value);
+                let style = '';
+                if (colorKey) style += `background:${activityColors[colorKey]};color:#fff;font-weight:bold;`;
+                if (rowspanMatrix[row][col] > 1) {
+                    html += `<td rowspan="${rowspanMatrix[row][col]}" style="${style}">${value}</td>`;
+                } else {
+                    html += `<td style="${style}">${value}</td>`;
+                }
+            }
+            html += '</tr>';
+        }
+        html += "</table>";
+
+        // Download
+        const blob = new Blob([html], {type:"application/vnd.ms-excel"});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `planning_${day}.xls`;
+        document.body.appendChild(a);
+        a.click();
+        URL.revokeObjectURL(url);
+        document.body.removeChild(a);
     });
-    html += "</table>";
-    const blob = new Blob([html], {type:"application/vnd.ms-excel"});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "planning_colore.xls";
-    a.click();
-    URL.revokeObjectURL(url);
 }
         function updateCell(day, time, col, activity, refresh = true) {
     planningData[day][time][col] = activity;
