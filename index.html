@@ -792,7 +792,7 @@ function createPlanningCell(day, time, col) {
         XLSX.utils.book_append_sheet(wb, ws, day.charAt(0).toUpperCase() + day.slice(1));
     });
 
-    XLSX.writeFile(wb, 'planning_hebdomadaire.xlsx');
+    XLSX.writeFile(wb, 'EDT_hebdomadaire.xlsx');
 }
         function updateCell(day, time, col, activity, refresh = true) {
     planningData[day][time][col] = activity;
