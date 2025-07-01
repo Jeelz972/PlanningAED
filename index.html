@@ -738,7 +738,7 @@ function createPlanningCell(day, time, col) {
         }
     }
 }
-      /* function generateExcel() {
+       function generateExcel() {
      const wb = XLSX.utils.book_new();
 
     // Couleurs identiques à ton code
@@ -829,9 +829,9 @@ function createPlanningCell(day, time, col) {
 
     // Sauvegarder en .xlsx pour garder la mise en forme
     XLSX.writeFile(wb, 'planning_hebdomadaire.xlsx');
-}*/
+}
 
-        function generateExcel() {
+      /*  function generateExcel() {
     const activityColors = {
         'bvs1': '#e91e63',
         'bvs2': '#ff9800',
@@ -930,7 +930,7 @@ function createPlanningCell(day, time, col) {
     a.click();
     URL.revokeObjectURL(url);
     document.body.removeChild(a);
-}
+}*/
         function updateCell(day, time, col, activity, refresh = true) {
     planningData[day][time][col] = activity;
     if (refresh) createPlanningGrid(day);
