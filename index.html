@@ -875,7 +875,9 @@ function generateSynthesePersonneVolume() {
             const count = personMap[person][item] || 0;
             const minutes = count * slotDuration;
             totalMinutes += minutes;
-            html += `<td>${minutes > 0 ? formatHM(minutes) : ""}</td>`;
+            
+             const idCell = `id="${person.replace(/\s/g,'_')}+${item.replace(/\s/g,'_')}"`;
+        html += `<td ${idCell}>${minutes > 0 ? formatHM(minutes) : ""}</td>`;
         });
         html += `<td><b>${totalMinutes > 0 ? formatHM(totalMinutes) : ""}</b></td></tr>`;
     });
