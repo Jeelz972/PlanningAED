@@ -952,9 +952,20 @@ function colorerSyntheseParItem() {
     const ths = Array.from(table.querySelectorAll('thead th'));
     const items = ths.slice(1, -1).map(th => th.textContent.trim()); // Ignore "Personne" et "Total"
 
-    // Calcule la moyenne pour chaque poste
+    // Trouve les index des colonnes à exclure (F et G)
+    const excludeColsLabels = ['F', 'G'];
+    const excludeIndexes = [];
+    items.forEach((item, idx) => {
+        if (excludeColsLabels.includes(item)) excludeIndexes.push(idx);
+    });
+
+    // Calcule la moyenne pour chaque poste (sauf F et G)
     let moyennes = [];
     items.forEach((item, colIdx) => {
+        if (excludeIndexes.includes(colIdx)) {
+            moyennes[colIdx] = null; // On ne calcule pas la moyenne pour F et G
+            return;
+        }
         let total = 0, count = 0;
         rows.forEach(row => {
             const cell = row.querySelectorAll('td')[colIdx + 1];
@@ -975,10 +986,19 @@ function colorerSyntheseParItem() {
         moyennes[colIdx] = count ? total / count : 0;
     });
 
-    // Applique les couleurs si l'écart dépasse ±60 min
+    // Applique les couleurs si l'écart dépasse ±60 min (sauf F et G)
     rows.forEach(row => {
         const cells = row.querySelectorAll('td');
         items.forEach((item, colIdx) => {
+            if (excludeIndexes.includes(colIdx)) {
+                // Pas de couleur sur F et G, mais on nettoie le style
+                const cell = cells[colIdx + 1];
+                if (cell) {
+                    cell.style.backgroundColor = '';
+                    cell.style.fontWeight = '';
+                }
+                return;
+            }
             const cell = cells[colIdx + 1];
             if (!cell) return;
             let minutes = 0;
