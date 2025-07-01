@@ -832,7 +832,8 @@ function createPlanningCell(day, time, col) {
 }*/
 
         function generateExcel() {
-  const activityColors = {
+ function exportPlanningAsHtml() {
+    const activityColors = {
         'bvs1': '#e91e63',
         'bvs2': '#ff9800',
         'portail': '#ff5722',
@@ -860,25 +861,23 @@ function createPlanningCell(day, time, col) {
         return activityColors[key] ? key : null;
     }
 
-    days.forEach(day => {
-        let html = `<table border="1" cellspacing="0" cellpadding="2" style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:10pt"><tr><th style="background:#764ba2;color:#fff">Heure</th>`;
-        columns.forEach(col => {
-            html += `<th style="background:#667eea;color:#fff">${col}</th>`;
-        });
-        html += "</tr>";
+    // Concatène tous les jours dans un seul fichier
+    let fullHtml = `<html><head><meta charset="UTF-8"></head><body style="font-family:Arial,sans-serif;font-size:10pt">`;
 
-        // Pour chaque colonne/personne, détecte les séquences à fusionner
-        // On va d’abord créer une matrice: [row][col]
+    days.forEach((day, dayIdx) => {
+        fullHtml += `<h2 style="margin-top:40px;margin-bottom:4px;color:#764ba2;">${day.charAt(0).toUpperCase()+day.slice(1)}</h2>`;
+        fullHtml += `<table border="1" cellspacing="0" cellpadding="2" style="border-collapse:collapse;width:auto;margin-bottom:24px"><tr><th style="background:#764ba2;color:#fff">Heure</th>`;
+        columns.forEach(col => {
+            fullHtml += `<th style="background:#667eea;color:#fff">${col}</th>`;
+        });
+        fullHtml += "</tr>";
+
+        // Fusion détection
         let cellMatrix = timeSlots.map(time =>
             columns.map(col => planningData[day][time][col] || '')
         );
-
-        // Structure pour savoir si une cellule doit être rendue (si fusionnée ailleurs, on ne la rend pas)
         let renderMatrix = Array(timeSlots.length).fill().map(() => Array(columns.length).fill(true));
-        // Et le rowspan associé à chaque cellule
         let rowspanMatrix = Array(timeSlots.length).fill().map(() => Array(columns.length).fill(1));
-
-        // Détection des fusions verticales (rowspan)
         for (let col = 0; col < columns.length; col++) {
             let start = 0;
             while (start < timeSlots.length) {
@@ -894,47 +893,44 @@ function createPlanningCell(day, time, col) {
                 let span = end - start + 1;
                 if (activity !== '' && span > 1) {
                     rowspanMatrix[start][col] = span;
-                    // Les cellules à masquer (sauf la première du groupe)
                     for (let i = start + 1; i <= end; i++) renderMatrix[i][col] = false;
                 }
                 start = end + 1;
             }
         }
-
-        // Rendu HTML ligne par ligne
         for (let row = 0; row < timeSlots.length; row++) {
             let hasContent = columns.some(colIdx => cellMatrix[row][colIdx] !== '');
-            if (!hasContent) continue; // Ne pas afficher les lignes vides
-
-            html += `<tr><td style="background:#f3f3f3;font-weight:bold">${timeSlots[row]}</td>`;
+            if (!hasContent) continue;
+            fullHtml += `<tr><td style="background:#f3f3f3;font-weight:bold">${timeSlots[row]}</td>`;
             for (let col = 0; col < columns.length; col++) {
-                if (!renderMatrix[row][col]) continue; // Cellule fusionnée, ne pas l’afficher
-
+                if (!renderMatrix[row][col]) continue;
                 const value = cellMatrix[row][col];
                 const colorKey = getActivityKey(value);
                 let style = '';
                 if (colorKey) style += `background:${activityColors[colorKey]};color:#fff;font-weight:bold;`;
                 if (rowspanMatrix[row][col] > 1) {
-                    html += `<td rowspan="${rowspanMatrix[row][col]}" style="${style}">${value}</td>`;
+                    fullHtml += `<td rowspan="${rowspanMatrix[row][col]}" style="${style}">${value}</td>`;
                 } else {
-                    html += `<td style="${style}">${value}</td>`;
+                    fullHtml += `<td style="${style}">${value}</td>`;
                 }
             }
-            html += '</tr>';
+            fullHtml += '</tr>';
         }
-        html += "</table>";
-
-        // Download
-        const blob = new Blob([html], {type:"application/vnd.ms-excel"});
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `planning_${day}.xls`;
-        document.body.appendChild(a);
-        a.click();
-        URL.revokeObjectURL(url);
-        document.body.removeChild(a);
+        fullHtml += "</table>";
     });
+
+    fullHtml += "</body></html>";
+
+    // Un seul fichier pour tous les jours
+    const blob = new Blob([fullHtml], {type:"application/vnd.ms-excel"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `planning_complet.xls`;
+    document.body.appendChild(a);
+    a.click();
+    URL.revokeObjectURL(url);
+    document.body.removeChild(a);
 }
         function updateCell(day, time, col, activity, refresh = true) {
     planningData[day][time][col] = activity;
@@ -943,7 +939,8 @@ function createPlanningCell(day, time, col) {
 
         document.getElementById('import-excel').addEventListener('change', handleExcelImportAllDays);
 
-function handleExcelImportAllDays(event) {
+
+        function handleExcelImportAllDays(event) {
     const file = event.target.files[0];
     if (!file) return;
     const reader = new FileReader();
@@ -956,10 +953,15 @@ function handleExcelImportAllDays(event) {
         dayNames.forEach(day => {
             // Cherche la feuille correspondante (insensible à la casse)
             const sheetName = workbook.SheetNames.find(n => n.trim().toLowerCase() === day);
-            if (!sheetName) return; // Si la feuille n'existe pas, passe au jour suivant
-
+            if (!sheetName) return;
             const sheet = workbook.Sheets[sheetName];
+
+            // On récupère les fusions éventuelles
+            const merges = sheet['!merges'] || [];
+
+            // On parse les données "classiquement"
             const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+            // On va d’abord remplir normalement
             for (let i = 1; i < rows.length; i++) { // Commence à 1 (skip header)
                 const row = rows[i];
                 const time = row[0];
@@ -968,6 +970,28 @@ function handleExcelImportAllDays(event) {
                     planningData[day][time][columns[c]] = row[c + 1] || '';
                 }
             }
+
+            // Maintenant, on traite les merges
+            merges.forEach(merge => {
+                // merge.s: { r: startRow, c: startCol }
+                // merge.e: { r: endRow, c: endCol }
+                // Header = ligne 0, colonne 0
+                const startRow = merge.s.r, endRow = merge.e.r;
+                const startCol = merge.s.c, endCol = merge.e.c;
+                // La valeur fusionnée est dans la cellule de départ
+                const value = rows[startRow]?.[startCol] ?? '';
+                // Appliquer cette valeur à toutes les cases de la plage fusionnée
+                for (let r = startRow; r <= endRow; r++) {
+                    // Rappel : colonne 0 = heure, donc colonne 1 = colonne "A"
+                    const time = rows[r]?.[0];
+                    if (!planningData[day][time]) continue;
+                    for (let c = startCol; c <= endCol; c++) {
+                        if (c === 0) continue; // ne jamais écrire sur la colonne des heures
+                        planningData[day][time][columns[c - 1]] = value;
+                    }
+                }
+            });
+
             changedDay = true;
             createPlanningGrid(day);
         });
