@@ -317,13 +317,13 @@
             <div class="activity-btn bvs1" onclick="selectActivity('BVS1')">B1</div>
             <div class="activity-btn bvs2" onclick="selectActivity('BVS2')">B2</div>
             <div class="activity-btn portail" onclick="selectActivity('Portail')">Portail</div>
-            <div class="activity-btn voltige" onclick="selectActivity('Voltige')">Voltige</div>
-            <div class="activity-btn renfort" onclick="selectActivity('Renfort surveillance')">Renfort surveillance</div>
+            <div class="activity-btn voltige" onclick="selectActivity('Voltige')">Suivi de classe/accompagnement élèves/aide bureau</div>
+            <div class="activity-btn renfort" onclick="selectActivity('Renfort surveillance')">Cours/WC/Hall</div>
             <div class="activity-btn cours-impaire" onclick="selectActivity('Cours Impaire')">Cours Impaire</div>
             <div class="activity-btn cours-paire" onclick="selectActivity('Cours paire')">Cours paire</div>
             <div class="activity-btn etude-impaire" onclick="selectActivity('Etude impaire')">Etude 1</div>
             <div class="activity-btn etude-paire" onclick="selectActivity('Etude paire')">Etude 2</div>
-            <div class="activity-btn ap" onclick="selectActivity('AP')">AP</div>
+            <div class="activity-btn ap" onclick="selectActivity('AP')">Assistanat pédagogique</div>
             <div class="activity-btn hall" onclick="selectActivity('Hall')">Hall</div>
             <div class="activity-btn refectoire" onclick="selectActivity('Réfectoire')">Réfectoire</div>
             <div class="activity-btn turbo" onclick="selectActivity('Turbo')">Turbo</div>
@@ -408,11 +408,11 @@
             </div>
             <div class="legend-item">
                 <div class="legend-color voltige"></div>
-                <span>Voltige</span>
+                <span>Suivi de classe/accompagnement élèves/aide bureau</span>
             </div>
             <div class="legend-item">
                 <div class="legend-color renfort"></div>
-                <span>Renfort surveillance</span>
+                <span>Cours/WC/Hall</span>
             </div>
             <div class="legend-item">
                 <div class="legend-color cours-impaire"></div>
@@ -432,7 +432,7 @@
             </div>
             <div class="legend-item">
                 <div class="legend-color ap"></div>
-                <span>AP</span>
+                <span>Assitanat pédagogique</span>
             </div>
             <div class="legend-item">
                 <div class="legend-color hall"></div>
@@ -488,7 +488,23 @@
         let startCol = null;
         let startRow = null;
         let planningData = {};
-        
+        // Table de correspondance pour l’affichage (affichage => interne)
+const affichageMapping = {
+  'Voltige': 'Suivi de classe/accompagnement élèves/aide bureau',
+  'Renfort surveillance': 'Cours/WC/Hall'
+};
+// Table inverse (interne => affichage)
+const affichageReverseMapping = {
+  'Suivi de classe/accompagnement élèves/aide bureau': 'Voltige',
+  'Cours/WC/Hall': 'Renfort surveillance'
+};
+function getAffichage(nom) {
+  return affichageMapping[nom] || nom;
+}
+function getNomInterne(nom) {
+  // pour l’enregistrement/import/export
+  return affichageReverseMapping[nom] || nom;
+}
         // Initialiser les données de planning
         days.forEach(day => {
             planningData[day] = {};
@@ -616,9 +632,9 @@ function createPlanningCell(day, time, col) {
     // On continue d'afficher l'input pour l'édition manuelle
     const input = document.createElement('input');
     input.type = 'text';
-    input.value = planningData[day][time][col];
+    input.value = getAffichage(planningData[day][time][col]);
     input.onchange = function() {
-        planningData[day][time][col] = this.value;
+        planningData[day][time][col] = getNomInterne(this.value);
         updateCellAppearance(cell, this.value);
     };
 
