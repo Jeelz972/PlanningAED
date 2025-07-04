@@ -317,13 +317,13 @@
             <div class="activity-btn bvs1" onclick="selectActivity('BVS1')">B1</div>
             <div class="activity-btn bvs2" onclick="selectActivity('BVS2')">B2</div>
             <div class="activity-btn portail" onclick="selectActivity('Portail')">Portail</div>
-            <div class="activity-btn voltige" onclick="selectActivity('Voltige')">Voltige</div>
-            <div class="activity-btn renfort" onclick="selectActivity('Renfort surveillance')">Renfort surveillance</div>
             <div class="activity-btn cours-impaire" onclick="selectActivity('Cours Impaire')">Cours Impaire</div>
             <div class="activity-btn cours-paire" onclick="selectActivity('Cours paire')">Cours paire</div>
             <div class="activity-btn etude-impaire" onclick="selectActivity('Etude impaire')">Etude 1</div>
             <div class="activity-btn etude-paire" onclick="selectActivity('Etude paire')">Etude 2</div>
-            <div class="activity-btn ap" onclick="selectActivity('AP')">AP</div>
+            <div class="activity-btn voltige" onclick="selectActivity('Suivi Classe/Accompagne élèves/Aide bureau')">Suivi Classe/Accompagne élèves/Aide bureau</div>
+            <div class="activity-btn renfort" onclick="selectActivity('renfort surveillance/Cours/WC/Hall')">renfort surveillance/Cours/WC/Hall</div>
+            <div class="activity-btn ap" onclick="selectActivity('Assistanat Pédagogique')">Assistanat Pédagogique</div>
             <div class="activity-btn hall" onclick="selectActivity('Hall')">Hall</div>
             <div class="activity-btn refectoire" onclick="selectActivity('Réfectoire')">Réfectoire</div>
             <div class="activity-btn turbo" onclick="selectActivity('Turbo')">Turbo</div>
@@ -336,13 +336,13 @@
             <button class="btn btn-primary btn-small" onclick="clearSpecificPoste('BVS1')">❌ Effacer B1</button>
             <button class="btn btn-primary btn-small" onclick="clearSpecificPoste('BVS2')">❌ Effacer B2</button>
             <button class="btn btn-primary btn-small" onclick="clearSpecificPoste('Portail')">❌ Effacer Portail</button>
-            <button class="btn btn-primary btn-small" onclick="clearSpecificPoste('Voltige')">❌ Effacer Voltige</button>
-            <button class="btn btn-primary btn-small" onclick="clearSpecificPoste('Renfort surveillance')">❌ Effacer Renforts</button>
             <button class="btn btn-primary btn-small" onclick="clearSpecificPoste('Cours Impaire')">❌ Effacer Cours Impaire</button>
             <button class="btn btn-primary btn-small" onclick="clearSpecificPoste('Cours paire')">❌ Effacer Cours paire</button>
             <button class="btn btn-primary btn-small" onclick="clearSpecificPoste('Etude impaire')">❌ Effacer Etude 1</button>
             <button class="btn btn-primary btn-small" onclick="clearSpecificPoste('Etude paire')">❌ Effacer Etude 2</button>
-            <button class="btn btn-primary btn-small" onclick="clearSpecificPoste('AP')">❌ Effacer AP</button>
+            <button class="btn btn-primary btn-small" onclick="clearSpecificPoste('Suivi Classe/Accompagne élèves/Aide bureau')">❌ Effacer Suivi Classe/Accompagne élèves/Aide bureau</button>
+            <button class="btn btn-primary btn-small" onclick="clearSpecificPoste('renfort surveillance/Cours/WC/Hall')">❌ Effacer Renforts</button>
+            <button class="btn btn-primary btn-small" onclick="clearSpecificPoste('Assistanat Pédagogique')">❌ Effacer Assistanat Pédagogique</button>
             <button class="btn btn-primary btn-small" onclick="clearSpecificPoste('Hall')">❌ Effacer Hall</button>
             <button class="btn btn-primary btn-small" onclick="clearSpecificPoste('Réfectoire')">❌ Effacer Réfectoire</button>
             <button class="btn btn-primary btn-small" onclick="clearSpecificPoste('Turbo')">❌ Effacer Turbo</button>
@@ -408,11 +408,11 @@
             </div>
             <div class="legend-item">
                 <div class="legend-color voltige"></div>
-                <span>Voltige</span>
+                <span>Suivi Classe/Accompagne élèves/Aide bureau</span>
             </div>
             <div class="legend-item">
                 <div class="legend-color renfort"></div>
-                <span>Renfort surveillance</span>
+                <span>renfort surveillance/Cours/WC/Hall</span>
             </div>
             <div class="legend-item">
                 <div class="legend-color cours-impaire"></div>
@@ -432,7 +432,7 @@
             </div>
             <div class="legend-item">
                 <div class="legend-color ap"></div>
-                <span>AP</span>
+                <span>Assistanat Pédagogique</span>
             </div>
             <div class="legend-item">
                 <div class="legend-color hall"></div>
@@ -640,7 +640,9 @@ function createPlanningCell(day, time, col) {
             if (value) {
                 const activity = value.toLowerCase()
                     .replace(/\s+/g, '-')
-                    .replace('renfort-surveillance', 'renfort')
+                    .replace('renfort surveillance', 'renfort surveillance/Cours/WC/Hall')
+                    .replace('voltige', 'Suivi Classe/Accompagne élèves/Aide bureau')
+                    .replace('ap', 'Assistanat Pédagogique')
                     .replace('réfectoire', 'refectoire');
                 if (activityClasses.includes(activity)) {
                     cell.classList.add(activity);
@@ -764,7 +766,9 @@ function createPlanningCell(day, time, col) {
         if (!value) return null;
         let key = value.toLowerCase()
             .replace(/\s+/g, '-')
-            .replace('renfort-surveillance', 'renfort')
+            .replace('renfort surveillance', 'renfort surveillance/Cours/WC/Hall')
+            .replace('voltige', 'Suivi Classe/Accompagne élèves/Aide bureau')
+            .replace('ap', 'Assistanat Pédagogique')
             .replace('réfectoire', 'refectoire');
         return activityColors[key] ? key : null;
     }
@@ -855,7 +859,9 @@ function createPlanningCell(day, time, col) {
         if (!value) return null;
         let key = value.toLowerCase()
             .replace(/\s+/g, '-')
-            .replace('renfort-surveillance', 'renfort')
+            .replace('renfort surveillance', 'renfort surveillance/Cours/WC/Hall')
+            .replace('voltige', 'Suivi Classe/Accompagne élèves/Aide bureau')
+            .replace('ap', 'Assistanat Pédagogique')
             .replace('réfectoire', 'refectoire');
         return activityColors[key] ? key : null;
     }
