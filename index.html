@@ -88,7 +88,7 @@
             margin-bottom: 20px;
         }
         .planning-grid > div[style*="display: none"] {
-    display: none !important;
+    display: none !ant;
 }
         .time-slot {
             background: #f8f9fa;
@@ -938,7 +938,8 @@ function createPlanningCell(day, time, col) {
     document.body.removeChild(a);
 }*/
         function updateCell(day, time, col, activity, refresh = true) {
-    planningData[day][time][col] = activity;
+            const importedValue = mapAncienVersNouveau(activity);
+            planningData[day][time][col] = importedValue;
     if (refresh) createPlanningGrid(day);
 }
 
@@ -1019,7 +1020,8 @@ function generateSynthesePersonneVolume() {
     days.forEach(day => {
         timeSlots.forEach(time => {
             columns.forEach(col => {
-                const value = planningData[day][time][col];
+                const importedValue = mapAncienVersNouveau(value);
+                planningData[day][time][col] = importedValue;
                 if (value && value.trim() !== "") {
                     if (!personMap[col]) personMap[col] = {};
                     if (!personMap[col][value]) personMap[col][value] = 0;
@@ -1091,7 +1093,8 @@ function generateSynthesePersonneParJour() {
     days.forEach(day => {
         timeSlots.forEach(time => {
             columns.forEach(col => {
-                const value = planningData[day][time][col];
+                const importedValue = mapAncienVersNouveau(value);
+                planningData[day][time][col] = importedValue;
                 if (value && value.trim() !== "") {
                     if (!personDayMap[col]) personDayMap[col] = {};
                     if (!personDayMap[col][day]) personDayMap[col][day] = 0;
@@ -1271,6 +1274,20 @@ function generatePDF() {
     });
 
     doc.save('planning.pdf');
+}
+
+        function mapAncienVersNouveau(label) {
+  if (!label) return label;
+  switch (label.trim().toLowerCase()) {
+    case 'renfort surveillance':
+      return 'renfort surveillance/Cours/WC/Hall';
+    case 'voltige':
+      return 'Suivi Classe/Accompagne élèves/Aide bureau';
+    case 'ap':
+      return 'Assistanat Pédagogique';
+    default:
+      return label;
+  }
 }
     </script>
 </body>
