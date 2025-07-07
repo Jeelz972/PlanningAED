@@ -6,12 +6,22 @@
     <title>Générateur de Planning Excel</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
     <style>
+        /* Styles CSS optimisés */
+        :root {
+            --primary-color: #667eea;
+            --secondary-color: #764ba2;
+            --background-gradient: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            --card-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            --border-radius: 15px;
+            --transition: all 0.3s ease;
+        }
+
         body {
             font-family: Arial, sans-serif;
             margin: 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--background-gradient);
             min-height: 100vh;
         }
 
@@ -19,9 +29,9 @@
             max-width: 1400px;
             margin: 0 auto;
             background: white;
-            border-radius: 15px;
+            border-radius: var(--border-radius);
             padding: 30px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            box-shadow: var(--card-shadow);
         }
         
         h1 {
@@ -29,11 +39,47 @@
             color: #333;
             margin-bottom: 30px;
             font-size: 2.5rem;
-            background: linear-gradient(45deg, #667eea, #764ba2);
+            background: var(--background-gradient);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
-        
+
+        /* Configuration Panel */
+        .config-panel {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 2px solid #e9ecef;
+        }
+
+        .config-section {
+            margin-bottom: 15px;
+        }
+
+        .config-section label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #333;
+        }
+
+        .config-section input, .config-section select {
+            width: 100%;
+            max-width: 200px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .config-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        /* Reste du CSS existant simplifié */
         .tabs {
             display: flex;
             border-bottom: 3px solid #eee;
@@ -49,17 +95,11 @@
             margin-right: 5px;
             border-radius: 10px 10px 0 0;
             font-weight: bold;
-            transition: all 0.3s ease;
-            position: relative;
-        }
-        
-        .tab:hover {
-            background: #e9ecef;
-            transform: translateY(-2px);
+            transition: var(--transition);
         }
         
         .tab.active {
-            background: linear-gradient(45deg, #667eea, #764ba2);
+            background: var(--background-gradient);
             color: white;
             box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
         }
@@ -73,11 +113,6 @@
             display: block;
         }
         
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
         .planning-grid {
             display: grid;
             grid-template-columns: 80px repeat(7, 1fr);
@@ -87,9 +122,30 @@
             overflow: hidden;
             margin-bottom: 20px;
         }
-        .planning-grid > div[style*="display: none"] {
-    display: none !important;
-}
+
+        .planning-cell {
+            background: white;
+            padding: 5px;
+            min-height: 25px;
+            position: relative;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        .header-cell {
+            background: var(--background-gradient);
+            color: white;
+            font-weight: bold;
+            text-align: center;
+            padding: 12px;
+            font-size: 14px;
+        }
+
         .time-slot {
             background: #f8f9fa;
             padding: 8px;
@@ -98,52 +154,59 @@
             text-align: center;
             border-right: 1px solid #ddd;
         }
-        
-        .planning-cell {
-            background: white;
-            padding: 5px;
-            min-height: 25px;
-            position: relative;
-            cursor: pointer;
-            transition: all 0.2s ease;
+
+        .controls {
+            margin-bottom: 20px;
             display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
             align-items: center;
-            justify-content: center;
-            font-size: 11px;
-            font-weight: bold;
         }
         
-        .planning-cell:hover {
-            transform: scale(1.02);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-            z-index: 10;
-        }
-        
-        .planning-cell input {
+        .btn {
+            padding: 12px 24px;
             border: none;
-            background: transparent;
-            width: 100%;
-            text-align: center;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: var(--transition);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .btn-primary {
+            background: var(--background-gradient);
+            color: white;
+        }
+        
+        .btn-success {
+            background: linear-gradient(45deg, #4caf50, #45a049);
+            color: white;
+        }
+        
+        .btn-danger {
+            background: linear-gradient(45deg, #f44336, #d32f2f);
+            color: white;
+        }
+
+        .activity-selector {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .activity-btn {
+            padding: 8px 12px;
+            border: 2px solid #ddd;
+            border-radius: 20px;
+            cursor: pointer;
             font-size: 11px;
             font-weight: bold;
-            color: inherit;
-        }
-        
-        .planning-cell input:focus {
-            outline: 2px solid #667eea;
-            border-radius: 3px;
-        }
-        
-        .header-cell {
-            background: linear-gradient(45deg, #667eea, #764ba2);
-            color: white;
-            font-weight: bold;
+            transition: var(--transition);
             text-align: center;
-            padding: 12px;
-            font-size: 14px;
         }
-        
-        /* Couleurs pour les postes */
+
+        /* Couleurs des activités */
         .bvs1 { background: #e91e63; color: white; }
         .bvs2 { background: #ff9800; color: white; }
         .portail { background: #ff5722; color: white; }
@@ -160,205 +223,60 @@
         .bureau-midi { background: #3f51b5; color: white; }
         .pause { background: #9e9e9e; color: white; }
         .marsons { background: #00bcd4; color: white; }
-        
-        .controls {
-            margin-bottom: 20px;
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-        
-        .btn {
-            padding: 12px 24px;
-            border: none;
-            border-radius: 25px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        }
-        
-        .btn-primary {
-            background: linear-gradient(45deg, #667eea, #764ba2);
-            color: white;
-        }
-        
-        .btn-success {
-            background: linear-gradient(45deg, #4caf50, #45a049);
-            color: white;
-        }
-        
-        .btn-danger {
-            background: linear-gradient(45deg, #f44336, #d32f2f);
-            color: white;
-        }
-        
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0,0,0,0.2);
-        }
-        
-        .activity-selector {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-        
-        .activity-btn {
-            padding: 8px 12px;
-            border: 2px solid #ddd;
-            border-radius: 20px;
-            cursor: pointer;
-            font-size: 11px;
-            font-weight: bold;
-            transition: all 0.2s ease;
-            text-align: center;
-        }
-        
-        .activity-btn:hover {
-            transform: scale(1.05);
-        }
-        
-        .activity-btn.selected {
-            border-color: #667eea;
-            box-shadow: 0 0 10px rgba(102, 126, 234, 0.3);
-        }
-        
-        .legend {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 10px;
-            margin-top: 20px;
-            padding: 20px;
-            background: #f8f9fa;
-            border-radius: 10px;
-        }
-        
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 5px;
-        }
-        
-        .legend-color {
-            width: 20px;
-            height: 20px;
-            border-radius: 4px;
-        }
-
-        .clear-buttons {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin-top: 15px;
-        }
-
-        .btn-small {
-            padding: 8px 16px;
-            font-size: 12px;
-        }
-        .planning-table th, .planning-table td {
-    border: 1px solid #ddd;
-    padding: 4px;
-    text-align: center;
-}
-        /* Tableau de synthèse - bordures et responsive */
-.synthese-responsive {
-  width: 100%;
-  overflow-x: auto;
-  margin-bottom: 20px;
-}
-
-#synthese-table table {
-  border-collapse: collapse;
-  width: 100%;
-  min-width: 400px;
-}
-
-#synthese-table th, #synthese-table td {
-  border: 2px solid #764ba2;
-  padding: 8px;
-  text-align: center;
-  background: #fff;
-  font-size: 15px;
-}
-
-#synthese-table th {
-  background: linear-gradient(45deg, #667eea, #764ba2);
-  color: #fff;
-}
-
-@media (max-width: 700px) {
-  #synthese-table th, #synthese-table td {
-    padding: 4px;
-    font-size: 11px;
-  }
-  #synthese-table table { min-width: 300px; }
-}
     </style>
 </head>
 <body>
     <div class="container">
         <h1>📅 Générateur de Planning Excel</h1>
 
-        <div class="controls">
-            <button class="btn btn-success" onclick="generateExcel()">📊 Générer fichier Excel</button>
-            <button class="btn btn-danger" onclick="clearAll()">🗑️ Effacer tout</button>
-<!-- Bouton d'import -->
-<input type="file" id="import-excel" accept=".xlsx,.xls" style="display:none" />
-<button class="btn btn-primary" onclick="document.getElementById('import-excel').click()">Importer un fichier Excel</button>
-        <button class="btn btn-primary" onclick="generatePDF()">🖨️ Générer PDF imprimable</button>
-        </div>
-        
-        <div class="activity-selector">
-            <div class="activity-btn bvs1" onclick="selectActivity('BVS1')">B1</div>
-            <div class="activity-btn bvs2" onclick="selectActivity('BVS2')">B2</div>
-            <div class="activity-btn portail" onclick="selectActivity('Portail')">Portail</div>
-            <div class="activity-btn voltige" onclick="selectActivity('Voltige')">Suivi de classe/accompagnement élèves/aide bureau</div>
-            <div class="activity-btn renfort" onclick="selectActivity('Renfort surveillance')">Cours/WC/Hall</div>
-            <div class="activity-btn cours-impaire" onclick="selectActivity('Cours Impaire')">Cours Impaire</div>
-            <div class="activity-btn cours-paire" onclick="selectActivity('Cours paire')">Cours paire</div>
-            <div class="activity-btn etude-impaire" onclick="selectActivity('Etude impaire')">Etude 1</div>
-            <div class="activity-btn etude-paire" onclick="selectActivity('Etude paire')">Etude 2</div>
-            <div class="activity-btn ap" onclick="selectActivity('AP')">Assistanat pédagogique</div>
-            <div class="activity-btn hall" onclick="selectActivity('Hall')">Hall</div>
-            <div class="activity-btn refectoire" onclick="selectActivity('Réfectoire')">Réfectoire</div>
-            <div class="activity-btn turbo" onclick="selectActivity('Turbo')">Turbo</div>
-            <div class="activity-btn bureau-midi" onclick="selectActivity('Bureau midi')">Bureau midi</div>
-            <div class="activity-btn pause" onclick="selectActivity('Pause')">Pause</div>
-            <div class="activity-btn marsons" onclick="selectActivity('Marsons')">Marsons</div>
+        <!-- Panneau de configuration -->
+        <div class="config-panel">
+            <h3>⚙️ Configuration</h3>
+            <div class="config-grid">
+                <div class="config-section">
+                    <label for="slot-duration">Durée d'un créneau (minutes):</label>
+                    <input type="number" id="slot-duration" value="5" min="1" max="60">
+                </div>
+                <div class="config-section">
+                    <label for="start-time">Heure de début:</label>
+                    <input type="time" id="start-time" value="07:25">
+                </div>
+                <div class="config-section">
+                    <label for="end-time">Heure de fin:</label>
+                    <input type="time" id="end-time" value="17:35">
+                </div>
+                <div class="config-section">
+                    <label for="columns-count">Nombre de colonnes:</label>
+                    <input type="number" id="columns-count" value="7" min="1" max="26">
+                </div>
+                <div class="config-section">
+                    <label for="filename">Nom du fichier:</label>
+                    <input type="text" id="filename" value="planning_hebdomadaire">
+                </div>
+            </div>
+            <button class="btn btn-primary" onclick="planningManager.applyConfiguration()">Appliquer la configuration</button>
         </div>
 
-        <div class="clear-buttons">
-            <button class="btn btn-primary btn-small" onclick="clearSpecificPoste('BVS1')">❌ Effacer B1</button>
-            <button class="btn btn-primary btn-small" onclick="clearSpecificPoste('BVS2')">❌ Effacer B2</button>
-            <button class="btn btn-primary btn-small" onclick="clearSpecificPoste('Portail')">❌ Effacer Portail</button>
-            <button class="btn btn-primary btn-small" onclick="clearSpecificPoste('Voltige')">❌ Effacer Voltige</button>
-            <button class="btn btn-primary btn-small" onclick="clearSpecificPoste('Renfort surveillance')">❌ Effacer Renforts</button>
-            <button class="btn btn-primary btn-small" onclick="clearSpecificPoste('Cours Impaire')">❌ Effacer Cours Impaire</button>
-            <button class="btn btn-primary btn-small" onclick="clearSpecificPoste('Cours paire')">❌ Effacer Cours paire</button>
-            <button class="btn btn-primary btn-small" onclick="clearSpecificPoste('Etude impaire')">❌ Effacer Etude 1</button>
-            <button class="btn btn-primary btn-small" onclick="clearSpecificPoste('Etude paire')">❌ Effacer Etude 2</button>
-            <button class="btn btn-primary btn-small" onclick="clearSpecificPoste('AP')">❌ Effacer AP</button>
-            <button class="btn btn-primary btn-small" onclick="clearSpecificPoste('Hall')">❌ Effacer Hall</button>
-            <button class="btn btn-primary btn-small" onclick="clearSpecificPoste('Réfectoire')">❌ Effacer Réfectoire</button>
-            <button class="btn btn-primary btn-small" onclick="clearSpecificPoste('Turbo')">❌ Effacer Turbo</button>
-            <button class="btn btn-primary btn-small" onclick="clearSpecificPoste('Bureau midi')">❌ Effacer Bureau midi</button>
-            <button class="btn btn-primary btn-small" onclick="clearSpecificPoste('Pause')">❌ Effacer Pause</button>
-            <button class="btn btn-primary btn-small" onclick="clearSpecificPoste('Marsons')">❌ Effacer Marsons</button>
+        <div class="controls">
+            <button class="btn btn-success" onclick="planningManager.generateExcel()">📊 Générer fichier Excel</button>
+            <button class="btn btn-danger" onclick="planningManager.clearAll()">🗑️ Effacer tout</button>
+            <input type="file" id="import-excel" accept=".xlsx,.xls" style="display:none" />
+            <button class="btn btn-primary" onclick="document.getElementById('import-excel').click()">Importer un fichier Excel</button>
+            <button class="btn btn-primary" onclick="planningManager.generatePDF()">🖨️ Générer PDF imprimable</button>
         </div>
         
+        <div class="activity-selector" id="activity-selector">
+            <!-- Les boutons d'activité seront générés par JavaScript -->
+        </div>
+
         <div class="tabs">
-            <div class="tab active" onclick="showTab('lundi')">Lundi</div>
-            <div class="tab" onclick="showTab('mardi')">Mardi</div>
-            <div class="tab" onclick="showTab('mercredi')">Mercredi</div>
-            <div class="tab" onclick="showTab('jeudi')">Jeudi</div>
-            <div class="tab" onclick="showTab('vendredi')">Vendredi</div>
-            <div class="tab" onclick="showTab('synthese')">Synthèse</div>
-            <div class="tab" onclick="showTab('syntheseJour')">Synthèse par jour</div>
+            <div class="tab active" onclick="planningManager.showTab('lundi')">Lundi</div>
+            <div class="tab" onclick="planningManager.showTab('mardi')">Mardi</div>
+            <div class="tab" onclick="planningManager.showTab('mercredi')">Mercredi</div>
+            <div class="tab" onclick="planningManager.showTab('jeudi')">Jeudi</div>
+            <div class="tab" onclick="planningManager.showTab('vendredi')">Vendredi</div>
+            <div class="tab" onclick="planningManager.showTab('synthese')">Synthèse</div>
+            <div class="tab" onclick="planningManager.showTab('syntheseJour')">Synthèse par jour</div>
         </div>
         
         <div id="lundi" class="tab-content active">
@@ -385,903 +303,447 @@
             <h3>Planning Vendredi</h3>
             <div id="planning-vendredi" class="planning-grid"></div>
         </div>
+
         <div id="synthese" class="tab-content">
-  <h3>Synthèse du temps par poste et personne</h3>
-  <div class="synthese-responsive"><div id="synthese-table"></div></div>
-</div>
+            <h3>Synthèse du temps par poste et personne</h3>
+            <div class="synthese-responsive">
+                <div id="synthese-table"></div>
+            </div>
+        </div>
+
         <div id="syntheseJour" class="tab-content">
-  <h3>Synthèse Journalier par personne</h3>
-  <div class="synthese-responsive"><div id="syntheseJour-table"></div></div>
-</div>
-        <div class="legend">
-            <div class="legend-item">
-                <div class="legend-color bvs1"></div>
-                <span>BVS1</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color bvs2"></div>
-                <span>BVS2</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color portail"></div>
-                <span>Portail</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color voltige"></div>
-                <span>Suivi de classe/accompagnement élèves/aide bureau</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color renfort"></div>
-                <span>Cours/WC/Hall</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color cours-impaire"></div>
-                <span>Cours Impaire</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color cours-paire"></div>
-                <span>Cours paire</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color etude-impaire"></div>
-                <span>Etude impaire</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color etude-paire"></div>
-                <span>Etude paire</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color ap"></div>
-                <span>Assitanat pédagogique</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color hall"></div>
-                <span>Hall</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color refectoire"></div>
-                <span>Réfectoire</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color turbo"></div>
-                <span>Turbo</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color bureau-midi"></div>
-                <span>Bureau midi</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color pause"></div>
-                <span>Pause</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color marsons"></div>
-                <span>Marsons</span>
+            <h3>Synthèse Journalier par personne</h3>
+            <div class="synthese-responsive">
+                <div id="syntheseJour-table"></div>
             </div>
         </div>
     </div>
 
     <script>
-        const timeSlots = [
-            '07:25', '07:30','07:35', '07:40', '07:45', '07:50', '07:55', '08:00', '08:05', '08:10', '08:15',
-            '08:20', '08:25', '08:30', '08:35', '08:40', '08:45', '08:50', '08:55', '09:00', '09:05',
-            '09:10', '09:15', '09:20', '09:25', '09:30', '09:35', '09:40', '09:45', '09:50', '09:55',
-            '10:00', '10:05', '10:10', '10:15', '10:20', '10:25', '10:30', '10:35', '10:40', '10:45',
-            '10:50', '10:55', '11:00', '11:05', '11:10', '11:15', '11:20', '11:25', '11:30', '11:35',
-            '11:40', '11:45', '11:50', '11:55', '12:00', '12:05', '12:10', '12:15', '12:20', '12:25',
-            '12:30', '12:35', '12:40', '12:45', '12:50', '12:55', '13:00', '13:05', '13:10', '13:15',
-            '13:20', '13:25', '13:30', '13:35', '13:40', '13:45', '13:50', '13:55', '14:00', '14:05',
-            '14:10', '14:15', '14:20', '14:25', '14:30', '14:35', '14:40', '14:45', '14:50', '14:55',
-            '15:00', '15:05', '15:10', '15:15', '15:20', '15:25', '15:30', '15:35', '15:40', '15:45',
-            '15:50', '15:55', '16:00', '16:05', '16:10', '16:15', '16:20', '16:25', '16:30', '16:35',
-            '16:40', '16:45', '16:50', '16:55', '17:00', '17:05', '17:10', '17:15', '17:20', '17:25',
-            '17:30', '17:35'
-        ];
-        
-        const columns = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
-        const days = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi'];
-        
-        let selectedActivity = 'BVS1';
-        let isMouseDown = false;
-        let dragActivity = null;
-        let startDay = null;
-        let startCol = null;
-        let startRow = null;
-        let planningData = {};
-        // Table de correspondance pour l’affichage (affichage => interne)
-const affichageMapping = {
-  'Voltige': 'Suivi de classe/accompagnement élèves/aide bureau',
-  'Renfort surveillance': 'Cours/WC/Hall'
-};
-// Table inverse (interne => affichage)
-const affichageReverseMapping = {
-  'Suivi de classe/accompagnement élèves/aide bureau': 'Voltige',
-  'Cours/WC/Hall': 'Renfort surveillance'
-};
-function getAffichage(nom) {
-  return affichageMapping[nom] || nom;
-}
-function getNomInterne(nom) {
-  // pour l’enregistrement/import/export
-  return affichageReverseMapping[nom] || nom;
-}
-        // Initialiser les données de planning
-        days.forEach(day => {
-            planningData[day] = {};
-            timeSlots.forEach(time => {
-                planningData[day][time] = {};
-                columns.forEach(col => {
-                    planningData[day][time][col] = '';
-                });
-            });
-        });
-        document.addEventListener('mouseup', () => isMouseDown = false);
-
-document.querySelectorAll('.planning-cell').forEach(cell => {
-  cell.addEventListener('mousedown', function() {
-    isMouseDown = true;
-    // Remplir la cellule
-  });
-  cell.addEventListener('mouseover', function() {
-    if (isMouseDown) {
-      // Remplir la cellule
-    }
-  });
-});
-        function initializePlannings() {
-            days.forEach(day => {
-                createPlanningGrid(day);
-            });
-        }
-        function createPlanningGrid(day) {
-            const container = document.getElementById(`planning-${day}`);
-            container.innerHTML = '';
+        // Configuration centralisée
+        const CONFIG = {
+            slotDuration: 5, // minutes
+            startTime: '07:25',
+            endTime: '17:35',
+            columnsCount: 7,
+            filename: 'planning_hebdomadaire',
             
-            // Headers
-            container.appendChild(createCell('', 'header-cell'));
-            columns.forEach(col => {
-                container.appendChild(createCell(col, 'header-cell'));
-            });
+            activities: {
+                'BVS1': { label: 'B1', color: '#e91e63', class: 'bvs1' },
+                'BVS2': { label: 'B2', color: '#ff9800', class: 'bvs2' },
+                'Portail': { label: 'Portail', color: '#ff5722', class: 'portail' },
+                'Voltige': { label: 'Suivi de classe/accompagnement élèves/aide bureau', color: '#2196f3', class: 'voltige' },
+                'Renfort surveillance': { label: 'Cours/WC/Hall', color: '#795548', class: 'renfort' },
+                'Cours Impaire': { label: 'Cours Impaire', color: '#4caf50', class: 'cours-impaire' },
+                'Cours paire': { label: 'Cours paire', color: '#8bc34a', class: 'cours-paire' },
+                'Etude impaire': { label: 'Etude 1', color: '#9c27b0', class: 'etude-impaire' },
+                'Etude paire': { label: 'Etude 2', color: '#673ab7', class: 'etude-paire' },
+                'AP': { label: 'Assistanat pédagogique', color: '#009688', class: 'ap' },
+                'Hall': { label: 'Hall', color: '#607d8b', class: 'hall' },
+                'Réfectoire': { label: 'Réfectoire', color: '#ff6f00', class: 'refectoire' },
+                'Turbo': { label: 'Turbo', color: '#f44336', class: 'turbo' },
+                'Bureau midi': { label: 'Bureau midi', color: '#3f51b5', class: 'bureau-midi' },
+                'Pause': { label: 'Pause', color: '#9e9e9e', class: 'pause' },
+                'Marsons': { label: 'Marsons', color: '#00bcd4', class: 'marsons' }
+            },
             
-            // Time slots and data
-            timeSlots.forEach(time => {
-                container.appendChild(createCell(time, 'time-slot'));
-                columns.forEach(col => {
-                    const cell = createPlanningCell(day, time, col);
-                    container.appendChild(cell);
-                });
-            });
-            
-            // Appelle la fusion des cellules identiques seulement après avoir tout créé
-            mergeIdenticalCells(day);
-        }
+            days: ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi']
+        };
 
-        
-        function createCell(content, className) {
-            const cell = document.createElement('div');
-            cell.className = className;
-            cell.textContent = content;
-            return cell;
-        }
-        
-function createPlanningCell(day, time, col) {
-    const cell = document.createElement('div');
-    cell.className = 'planning-cell';
-
-    // Repère la position de la cellule
-    const rowIdx = timeSlots.indexOf(time);
-    const colIdx = columns.indexOf(col);
-
-    // Gestion drag & drop
-    cell.onmousedown = function(e) {
-        isMouseDown = true;
-        dragActivity = selectedActivity;
-        startDay = day;
-        startCol = col;
-        startRow = rowIdx;
-        updateCell(day, time, col, dragActivity, false);
-        document.body.style.userSelect = "none";
-    };
-    cell.onmouseover = function(e) {
-        if (isMouseDown && dragActivity && day === startDay && col === startCol) {
-            // Remplit les cases entre startRow et rowIdx
-            let min = Math.min(startRow, rowIdx);
-            let max = Math.max(startRow, rowIdx);
-            for (let r = min; r <= max; r++) {
-                let t = timeSlots[r];
-                planningData[day][t][col] = dragActivity;
-            }
-            createPlanningGrid(day);
-        }
-    };
-    cell.onmouseup = function(e) {
-        isMouseDown = false;
-        dragActivity = null;
-        startDay = null;
-        startCol = null;
-        startRow = null;
-        document.body.style.userSelect = "";
-    };
-
-    // Pour mobile/tactile :
-    cell.ontouchstart = function(e) {
-        isMouseDown = true;
-        dragActivity = selectedActivity;
-        startDay = day;
-        startCol = col;
-        startRow = rowIdx;
-        updateCell(day, time, col, dragActivity, false);
-    };
-    cell.ontouchmove = function(e) {
-        if (!isMouseDown) return;
-        const touch = e.touches[0];
-        const target = document.elementFromPoint(touch.clientX, touch.clientY);
-        if (target && target.classList.contains('planning-cell')) {
-            const idx = Array.from(target.parentNode.children).indexOf(target);
-            // (Optionnel: tu peux retrouver la position exacte ici)
-        }
-    };
-    cell.ontouchend = function(e) {
-        isMouseDown = false;
-        dragActivity = null;
-        startDay = null;
-        startCol = null;
-        startRow = null;
-    };
-
-    // On continue d'afficher l'input pour l'édition manuelle
-    const input = document.createElement('input');
-    input.type = 'text';
-    input.value = getAffichage(planningData[day][time][col]);
-    input.onchange = function() {
-        planningData[day][time][col] = getNomInterne(this.value);
-        updateCellAppearance(cell, this.value);
-    };
-
-    cell.appendChild(input);
-    updateCellAppearance(cell, planningData[day][time][col]);
-    return cell;
-}
-        
-        function updateCell(day, time, col, activity) {
-            planningData[day][time][col] = activity;
-            createPlanningGrid(day);
-        }
-        
-        function updateCellAppearance(cell, value) {
-            // Retirer toutes les classes d'activité
-            const activityClasses = ['bvs1', 'bvs2', 'portail', 'voltige', 'renfort', 'cours-impaire', 'cours-paire', 'etude-impaire', 'etude-paire', 'ap', 'hall', 'refectoire', 'turbo', 'bureau-midi', 'pause', 'marsons'];
-            activityClasses.forEach(cls => cell.classList.remove(cls));
-            
-            if (value) {
-                const activity = value.toLowerCase()
-                    .replace(/\s+/g, '-')
-                    .replace('renfort-surveillance', 'renfort')
-                    .replace('réfectoire', 'refectoire');
-                if (activityClasses.includes(activity)) {
-                    cell.classList.add(activity);
+        // Utilitaires
+        const Utils = {
+            generateTimeSlots(startTime, endTime, duration) {
+                const slots = [];
+                const start = this.timeToMinutes(startTime);
+                const end = this.timeToMinutes(endTime);
+                
+                for (let minutes = start; minutes <= end; minutes += duration) {
+                    slots.push(this.minutesToTime(minutes));
                 }
+                return slots;
+            },
+
+            timeToMinutes(time) {
+                const [hours, minutes] = time.split(':').map(Number);
+                return hours * 60 + minutes;
+            },
+
+            minutesToTime(minutes) {
+                const hours = Math.floor(minutes / 60);
+                const mins = minutes % 60;
+                return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+            },
+
+            generateColumns(count) {
+                return Array.from({ length: count }, (_, i) => String.fromCharCode(65 + i));
+            },
+
+            formatDuration(minutes) {
+                if (minutes <= 0) return "";
+                const h = Math.floor(minutes / 60);
+                const m = minutes % 60;
+                return h > 0 ? `${h}h${m > 0 ? m : ""}` : `${m}min`;
             }
-        }
-        
-        function clearSpecificPoste(poste) {
-            if (confirm(`Êtes-vous sûr de vouloir effacer tous les "${poste}" ?`)) {
-                days.forEach(day => {
-                    timeSlots.forEach(time => {
-                        columns.forEach(col => {
-                            if (planningData[day][time][col] === poste) {
-                                planningData[day][time][col] = '';
+        };
+
+        // Gestionnaire principal du planning
+        const PlanningManager = {
+            timeSlots: [],
+            columns: [],
+            selectedActivity: 'BVS1',
+            isMouseDown: false,
+            planningData: {},
+
+            init() {
+                this.updateFromConfig();
+                this.initializePlanningData();
+                this.createActivityButtons();
+                this.initializePlannings();
+                this.setupEventListeners();
+            },
+
+            updateFromConfig() {
+                this.timeSlots = Utils.generateTimeSlots(CONFIG.startTime, CONFIG.endTime, CONFIG.slotDuration);
+                this.columns = Utils.generateColumns(CONFIG.columnsCount);
+            },
+
+            applyConfiguration() {
+                // Récupération des valeurs de configuration
+                CONFIG.slotDuration = parseInt(document.getElementById('slot-duration').value);
+                CONFIG.startTime = document.getElementById('start-time').value;
+                CONFIG.endTime = document.getElementById('end-time').value;
+                CONFIG.columnsCount = parseInt(document.getElementById('columns-count').value);
+                CONFIG.filename = document.getElementById('filename').value;
+
+                // Mise à jour du planning
+                this.updateFromConfig();
+                this.initializePlanningData();
+                this.initializePlannings();
+                
+                alert('Configuration appliquée avec succès !');
+            },
+
+            initializePlanningData() {
+                this.planningData = {};
+                CONFIG.days.forEach(day => {
+                    this.planningData[day] = {};
+                    this.timeSlots.forEach(time => {
+                        this.planningData[day][time] = {};
+                        this.columns.forEach(col => {
+                            this.planningData[day][time][col] = '';
+                        });
+                    });
+                });
+            },
+
+            createActivityButtons() {
+                const container = document.getElementById('activity-selector');
+                container.innerHTML = '';
+                
+                Object.entries(CONFIG.activities).forEach(([key, activity]) => {
+                    const button = document.createElement('div');
+                    button.className = `activity-btn ${activity.class}`;
+                    button.textContent = activity.label;
+                    button.onclick = () => this.selectActivity(key);
+                    container.appendChild(button);
+                });
+            },
+
+            selectActivity(activity) {
+                this.selectedActivity = activity;
+                document.querySelectorAll('.activity-btn').forEach(btn => {
+                    btn.classList.remove('selected');
+                });
+                event.target.classList.add('selected');
+            },
+
+            initializePlannings() {
+                CONFIG.days.forEach(day => {
+                    this.createPlanningGrid(day);
+                });
+            },
+
+            createPlanningGrid(day) {
+                const container = document.getElementById(`planning-${day}`);
+                container.innerHTML = '';
+                
+                // Headers
+                container.appendChild(this.createCell('', 'header-cell'));
+                this.columns.forEach(col => {
+                    container.appendChild(this.createCell(col, 'header-cell'));
+                });
+                
+                // Time slots and data
+                this.timeSlots.forEach(time => {
+                    container.appendChild(this.createCell(time, 'time-slot'));
+                    this.columns.forEach(col => {
+                        const cell = this.createPlanningCell(day, time, col);
+                        container.appendChild(cell);
+                    });
+                });
+            },
+
+            createCell(content, className) {
+                const cell = document.createElement('div');
+                cell.className = className;
+                cell.textContent = content;
+                return cell;
+            },
+
+            createPlanningCell(day, time, col) {
+                const cell = document.createElement('div');
+                cell.className = 'planning-cell';
+
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.value = this.planningData[day][time][col];
+                input.onchange = () => {
+                    this.planningData[day][time][col] = input.value;
+                    this.updateCellAppearance(cell, input.value);
+                };
+
+                cell.appendChild(input);
+                this.updateCellAppearance(cell, this.planningData[day][time][col]);
+                
+                // Gestion du drag & drop
+                this.setupCellEvents(cell, day, time, col);
+                
+                return cell;
+            },
+
+            setupCellEvents(cell, day, time, col) {
+                cell.onmousedown = (e) => {
+                    this.isMouseDown = true;
+                    this.updateCell(day, time, col, this.selectedActivity);
+                };
+
+                cell.onmouseover = (e) => {
+                    if (this.isMouseDown) {
+                        this.updateCell(day, time, col, this.selectedActivity);
+                    }
+                };
+            },
+
+            updateCell(day, time, col, activity) {
+                this.planningData[day][time][col] = activity;
+                this.createPlanningGrid(day);
+            },
+
+            updateCellAppearance(cell, value) {
+                // Retirer toutes les classes d'activité
+                Object.values(CONFIG.activities).forEach(activity => {
+                    cell.classList.remove(activity.class);
+                });
+                
+                // Ajouter la classe appropriée
+                const activityConfig = Object.values(CONFIG.activities).find(
+                    activity => activity.label === value || Object.keys(CONFIG.activities).find(key => key === value)
+                );
+                
+                if (activityConfig) {
+                    cell.classList.add(activityConfig.class);
+                }
+            },
+
+            showTab(tabName) {
+                document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+                
+                event.target.classList.add('active');
+                document.getElementById(tabName).classList.add('active');
+                
+                if (tabName === 'synthese') {
+                    this.generateSynthese();
+                } else if (tabName === 'syntheseJour') {
+                    this.generateSyntheseJour();
+                }
+            },
+
+            clearAll() {
+                if (confirm('Êtes-vous sûr de vouloir effacer tous les plannings ?')) {
+                    this.initializePlanningData();
+                    this.initializePlannings();
+                }
+            },
+
+            generateExcel() {
+                const wb = XLSX.utils.book_new();
+                
+                CONFIG.days.forEach(day => {
+                    const wsData = [];
+                    const headerRow = ['Heure', ...this.columns];
+                    wsData.push(headerRow);
+
+                    this.timeSlots.forEach(time => {
+                        const row = [time];
+                        this.columns.forEach(col => {
+                            row.push(this.planningData[day][time][col] || '');
+                        });
+                        wsData.push(row);
+                    });
+
+                    const ws = XLSX.utils.aoa_to_sheet(wsData);
+                    XLSX.utils.book_append_sheet(wb, ws, day.charAt(0).toUpperCase() + day.slice(1));
+                });
+
+                XLSX.writeFile(wb, `${CONFIG.filename}.xlsx`);
+            },
+
+            generatePDF() {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF({ unit: 'pt', format: 'a4', orientation: 'portrait' });
+
+                CONFIG.days.forEach((day, dayIdx) => {
+                    if (dayIdx > 0) doc.addPage();
+
+                    doc.setFontSize(18);
+                    doc.text(day.charAt(0).toUpperCase() + day.slice(1), 40, 40);
+
+                    const headerRow = ['Heure', ...this.columns];
+                    const dataRows = this.timeSlots.map(time =>
+                        [time, ...this.columns.map(col => this.planningData[day][time][col] || '')]
+                    );
+
+                    doc.autoTable({
+                        head: [headerRow],
+                        body: dataRows,
+                        startY: 60,
+                        theme: 'grid',
+                        styles: { fontSize: 8, cellPadding: 2 },
+                        headStyles: { fillColor: [102, 126, 234], textColor: 255 }
+                    });
+                });
+
+                doc.save(`${CONFIG.filename}.pdf`);
+            },
+
+            generateSynthese() {
+                // Implémentation de la synthèse
+                const personMap = {};
+                
+                CONFIG.days.forEach(day => {
+                    this.timeSlots.forEach(time => {
+                        this.columns.forEach(col => {
+                            const value = this.planningData[day][time][col];
+                            if (value && value.trim() !== "") {
+                                if (!personMap[col]) personMap[col] = {};
+                                if (!personMap[col][value]) personMap[col][value] = 0;
+                                personMap[col][value] += 1;
                             }
                         });
                     });
-                    createPlanningGrid(day);
                 });
-            }
-        }
-        
-        function selectActivity(activity) {
-            selectedActivity = activity;
-            document.querySelectorAll('.activity-btn').forEach(btn => {
-                btn.classList.remove('selected');
-            });
-            event.target.classList.add('selected');
-        }
-        
-       function showTab(day) {
-    document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-    event.target.classList.add('active');
-    document.getElementById(day).classList.add('active');
-    if(day === 'synthese') {
-        generateSynthesePersonneVolume();
-    }
-            if(day === 'syntheseJour') {
-        generateSynthesePersonneParJour();
-    }
-}
-        
-        function clearAll() {
-            if (confirm('Êtes-vous sûr de vouloir effacer tous les plannings ?')) {
-                days.forEach(day => {
-                    timeSlots.forEach(time => {
-                        columns.forEach(col => {
-                            planningData[day][time][col] = '';
+
+                // Génération du tableau HTML
+                const allPeople = Object.keys(personMap).sort();
+                const allItems = [...new Set(Object.values(personMap).flatMap(Object.keys))].sort();
+
+                let html = `<table class="table table-bordered"><thead><tr><th>Personne</th>`;
+                allItems.forEach(item => html += `<th>${item}</th>`);
+                html += `<th>Total</th></tr></thead><tbody>`;
+
+                allPeople.forEach(person => {
+                    let totalMinutes = 0;
+                    html += `<tr><td>${person}</td>`;
+                    allItems.forEach(item => {
+                        const count = personMap[person][item] || 0;
+                        const minutes = count * CONFIG.slotDuration;
+                        totalMinutes += minutes;
+                        html += `<td>${minutes > 0 ? Utils.formatDuration(minutes) : ""}</td>`;
+                    });
+                    html += `<td><b>${totalMinutes > 0 ? Utils.formatDuration(totalMinutes) : ""}</b></td></tr>`;
+                });
+
+                html += `</tbody></table>`;
+                document.getElementById("synthese-table").innerHTML = html;
+            },
+
+            generateSyntheseJour() {
+                // Implémentation similaire pour la synthèse par jour
+                const personDayMap = {};
+
+                CONFIG.days.forEach(day => {
+                    this.timeSlots.forEach(time => {
+                        this.columns.forEach(col => {
+                            const value = this.planningData[day][time][col];
+                            if (value && value.trim() !== "") {
+                                if (!personDayMap[col]) personDayMap[col] = {};
+                                if (!personDayMap[col][day]) personDayMap[col][day] = 0;
+                                personDayMap[col][day] += 1;
+                            }
                         });
                     });
-                    createPlanningGrid(day);
+                });
+
+                const allPeople = Object.keys(personDayMap).sort();
+
+                let html = `<table class="table table-bordered"><thead><tr><th>Personne</th>`;
+                CONFIG.days.forEach(day => html += `<th>${day.charAt(0).toUpperCase() + day.slice(1)}</th>`);
+                html += `<th>Total</th></tr></thead><tbody>`;
+
+                allPeople.forEach(person => {
+                    let total = 0;
+                    html += `<tr><td>${person}</td>`;
+                    CONFIG.days.forEach(day => {
+                        const count = (personDayMap[person][day] || 0);
+                        const minutes = count * CONFIG.slotDuration;
+                        total += minutes;
+                        html += `<td>${minutes > 0 ? Utils.formatDuration(minutes) : ""}</td>`;
+                    });
+                    html += `<td><b>${total > 0 ? Utils.formatDuration(total) : ""}</b></td></tr>`;
+                });
+
+                html += `</tbody></table>`;
+                document.getElementById("syntheseJour-table").innerHTML = html;
+            },
+
+            setupEventListeners() {
+                document.addEventListener('mouseup', () => this.isMouseDown = false);
+                
+                // Import Excel
+                document.getElementById('import-excel').addEventListener('change', (event) => {
+                    const file = event.target.files[0];
+                    if (!file) return;
+                    
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        
+                        CONFIG.days.forEach(day => {
+                            const sheetName = workbook.SheetNames.find(n => n.trim().toLowerCase() === day);
+                            if (!sheetName) return;
+                            
+                            const sheet = workbook.Sheets[sheetName];
+                            const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                            
+                            for (let i = 1; i < rows.length; i++) {
+                                const row = rows[i];
+                                const time = row[0];
+                                if (!this.planningData[day][time]) continue;
+                                
+                                for (let c = 0; c < this.columns.length; c++) {
+                                    this.planningData[day][time][this.columns[c]] = row[c + 1] || '';
+                                }
+                            }
+                            
+                            this.createPlanningGrid(day);
+                        });
+                        
+                        alert("Importation terminée !");
+                    };
+                    reader.readAsArrayBuffer(file);
                 });
             }
-        }
-        function mergeIdenticalCells(day) {
-    const rows = timeSlots.length;
-    const cols = columns.length;
-    const grid = document.getElementById('planning-' + day);
-    if (!grid) return;
+        };
 
-    // Construction du tableau des cellules (données uniquement)
-    const cellsMatrix = [];
-    for (let col = 0; col < cols; col++) {
-        cellsMatrix[col] = [];
-        for (let row = 0; row < rows; row++) {
-            // Sauter la toute première ligne (entête)
-            const idx = (row + 1) * (cols + 1) + (col + 1);
-            cellsMatrix[col][row] = grid.children[idx];
-        }
-    }
+        // Alias pour la compatibilité
+        const planningManager = PlanningManager;
 
-    // Fusionne uniquement les cellules de données (pas l'entête)
-    for (let col = 0; col < cols; col++) {
-        let start = 0;
-        while (start < rows) {
-            let end = start;
-            while (
-                end + 1 < rows &&
-                planningData[day][timeSlots[end]][columns[col]] &&
-                planningData[day][timeSlots[end]][columns[col]] === planningData[day][timeSlots[end + 1]][columns[col]]
-            ) {
-                end++;
-            }
-            if (end > start) {
-                cellsMatrix[col][start].style.gridRow = `span ${end - start + 1}`;
-                for (let r = start + 1; r <= end; r++) {
-                    cellsMatrix[col][r].style.display = "none";
-                }
-            } else {
-                cellsMatrix[col][start].style.gridRow = "";
-                cellsMatrix[col][start].style.display = "";
-            }
-            start = end + 1;
-        }
-    }
-}
-       function generateExcel() {
-     const wb = XLSX.utils.book_new();
-
-    // Couleurs identiques à ton code
-    const activityColors = {
-        'bvs1': 'FFC91E63',
-        'bvs2': 'FFFF9800',
-        'portail': 'FFFF5722',
-        'voltige': 'FF2196F3',
-        'renfort': 'FF795548',
-        'cours-impaire': 'FF4CAF50',
-        'cours-paire': 'FF8BC34A',
-        'etude-impaire': 'FF9C27B0',
-        'etude-paire': 'FF673AB7',
-        'ap': 'FF009688',
-        'hall': 'FF607D8B',
-        'refectoire': 'FFFF6F00',
-        'turbo': 'FFF44336',
-        'bureau-midi': 'FF3F51B5',
-        'pause': 'FF9E9E9E',
-        'marsons': 'FF00BCD4'
-    };
-    function getActivityKey(value) {
-        if (!value) return null;
-        let key = value.toLowerCase()
-            .replace(/\s+/g, '-')
-            .replace('renfort-surveillance', 'renfort')
-            .replace('réfectoire', 'refectoire');
-        return activityColors[key] ? key : null;
-    }
-
-    days.forEach(day => {
-        const wsData = [];
-        const headerRow = ['Heure', ...columns];
-        wsData.push(headerRow);
-
-        // Génération des données ligne par ligne
-        timeSlots.forEach(time => {
-            const row = [time];
-            columns.forEach(col => {
-                row.push(planningData[day][time][col] || '');
-            });
-            wsData.push(row);
+        // Initialisation au chargement de la page
+        document.addEventListener('DOMContentLoaded', () => {
+            PlanningManager.init();
         });
-
-        const ws = XLSX.utils.aoa_to_sheet(wsData);
-
-        // Ajout des couleurs
-        for(let r=1; r<wsData.length; r++) { // r=1 pour ignorer l'entête
-            for(let c=1; c<=columns.length; c++) { // c=1 car colonne 0 = heure
-                const value = wsData[r][c];
-                const colorKey = getActivityKey(value);
-                if (colorKey) {
-                    const cellAddress = XLSX.utils.encode_cell({r, c});
-                    if (!ws[cellAddress]) ws[cellAddress] = { t: 's', v: value };
-                    ws[cellAddress].s = {
-                        fill: { fgColor: { rgb: activityColors[colorKey] } },
-                        font: { color: { rgb: "FFFFFFFF" }, bold: true }
-                    };
-                }
-            }
-        }
-
-        // Fusion des cellules (déjà vu précédemment)
-        ws['!merges'] = [];
-        columns.forEach((col, colIdx) => {
-            let start = 1;
-            let value = wsData[start][colIdx + 1];
-            for (let row = 2; row < wsData.length; row++) {
-                if (wsData[row][colIdx + 1] !== value) {
-                    if (row - start > 1 && value) {
-                        ws['!merges'].push({ s: { r: start, c: colIdx + 1 }, e: { r: row - 1, c: colIdx + 1 } });
-                    }
-                    start = row;
-                    value = wsData[row][colIdx + 1];
-                }
-            }
-            if (wsData.length - start > 1 && value) {
-                ws['!merges'].push({ s: { r: start, c: colIdx + 1 }, e: { r: wsData.length - 1, c: colIdx + 1 } });
-            }
-        });
-
-        // Largeur des colonnes
-        ws['!cols'] = [{ wch: 10 }];
-        columns.forEach(() => ws['!cols'].push({ wch: 15 }));
-
-        XLSX.utils.book_append_sheet(wb, ws, day.charAt(0).toUpperCase() + day.slice(1));
-    });
-
-    // Sauvegarder en .xlsx pour garder la mise en forme
-    XLSX.writeFile(wb, 'planning_hebdomadaire.xlsx');
-}
-
-      /*  function generateExcel() {
-    const activityColors = {
-        'bvs1': '#e91e63',
-        'bvs2': '#ff9800',
-        'portail': '#ff5722',
-        'voltige': '#2196f3',
-        'renfort': '#795548',
-        'cours-impaire': '#4caf50',
-        'cours-paire': '#8bc34a',
-        'etude-impaire': '#9c27b0',
-        'etude-paire': '#673ab7',
-        'ap': '#009688',
-        'hall': '#607d8b',
-        'refectoire': '#ff6f00',
-        'turbo': '#f44336',
-        'bureau-midi': '#3f51b5',
-        'pause': '#9e9e9e',
-        'marsons': '#00bcd4'
-    };
-
-    function getActivityKey(value) {
-        if (!value) return null;
-        let key = value.toLowerCase()
-            .replace(/\s+/g, '-')
-            .replace('renfort-surveillance', 'renfort')
-            .replace('réfectoire', 'refectoire');
-        return activityColors[key] ? key : null;
-    }
-
-    // Concatène tous les jours dans un seul fichier
-    let fullHtml = `<html><head><meta charset="UTF-8"></head><body style="font-family:Arial,sans-serif;font-size:10pt">`;
-
-    days.forEach((day, dayIdx) => {
-        fullHtml += `<h2 style="margin-top:40px;margin-bottom:4px;color:#764ba2;">${day.charAt(0).toUpperCase()+day.slice(1)}</h2>`;
-        fullHtml += `<table border="1" cellspacing="0" cellpadding="2" style="border-collapse:collapse;width:auto;margin-bottom:24px"><tr><th style="background:#764ba2;color:#fff">Heure</th>`;
-        columns.forEach(col => {
-            fullHtml += `<th style="background:#667eea;color:#fff">${col}</th>`;
-        });
-        fullHtml += "</tr>";
-
-        // Fusion détection
-        let cellMatrix = timeSlots.map(time =>
-            columns.map(col => planningData[day][time][col] || '')
-        );
-        let renderMatrix = Array(timeSlots.length).fill().map(() => Array(columns.length).fill(true));
-        let rowspanMatrix = Array(timeSlots.length).fill().map(() => Array(columns.length).fill(1));
-        for (let col = 0; col < columns.length; col++) {
-            let start = 0;
-            while (start < timeSlots.length) {
-                let activity = cellMatrix[start][col];
-                let end = start;
-                while (
-                    end + 1 < timeSlots.length &&
-                    cellMatrix[end + 1][col] === activity &&
-                    activity !== ''
-                ) {
-                    end++;
-                }
-                let span = end - start + 1;
-                if (activity !== '' && span > 1) {
-                    rowspanMatrix[start][col] = span;
-                    for (let i = start + 1; i <= end; i++) renderMatrix[i][col] = false;
-                }
-                start = end + 1;
-            }
-        }
-        for (let row = 0; row < timeSlots.length; row++) {
-            let hasContent = columns.some(colIdx => cellMatrix[row][colIdx] !== '');
-            if (!hasContent) continue;
-            fullHtml += `<tr><td style="background:#f3f3f3;font-weight:bold">${timeSlots[row]}</td>`;
-            for (let col = 0; col < columns.length; col++) {
-                if (!renderMatrix[row][col]) continue;
-                const value = cellMatrix[row][col];
-                const colorKey = getActivityKey(value);
-                let style = '';
-                if (colorKey) style += `background:${activityColors[colorKey]};color:#fff;font-weight:bold;`;
-                if (rowspanMatrix[row][col] > 1) {
-                    fullHtml += `<td rowspan="${rowspanMatrix[row][col]}" style="${style}">${value}</td>`;
-                } else {
-                    fullHtml += `<td style="${style}">${value}</td>`;
-                }
-            }
-            fullHtml += '</tr>';
-        }
-        fullHtml += "</table>";
-    });
-
-    fullHtml += "</body></html>";
-
-    // Un seul fichier pour tous les jours
-    const blob = new Blob([fullHtml], {type:"application/vnd.ms-excel"});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `planning_complet.xls`;
-    document.body.appendChild(a);
-    a.click();
-    URL.revokeObjectURL(url);
-    document.body.removeChild(a);
-}*/
-        function updateCell(day, time, col, activity, refresh = true) {
-    planningData[day][time][col] = activity;
-    if (refresh) createPlanningGrid(day);
-}
-
-        document.getElementById('import-excel').addEventListener('change', handleExcelImportAllDays);
-
-
-        function handleExcelImportAllDays(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const dayNames = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi'];
-
-        let changedDay = false;
-        dayNames.forEach(day => {
-            // Cherche la feuille correspondante (insensible à la casse)
-            const sheetName = workbook.SheetNames.find(n => n.trim().toLowerCase() === day);
-            if (!sheetName) return;
-            const sheet = workbook.Sheets[sheetName];
-
-            // On récupère les fusions éventuelles
-            const merges = sheet['!merges'] || [];
-
-            // On parse les données "classiquement"
-            const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-            // On va d’abord remplir normalement
-            for (let i = 1; i < rows.length; i++) { // Commence à 1 (skip header)
-                const row = rows[i];
-                const time = row[0];
-                if (!planningData[day][time]) continue; // Ignore heures non trouvées
-                for (let c = 0; c < columns.length; c++) {
-                    planningData[day][time][columns[c]] = row[c + 1] || '';
-                }
-            }
-
-            // Maintenant, on traite les merges
-            merges.forEach(merge => {
-                // merge.s: { r: startRow, c: startCol }
-                // merge.e: { r: endRow, c: endCol }
-                // Header = ligne 0, colonne 0
-                const startRow = merge.s.r, endRow = merge.e.r;
-                const startCol = merge.s.c, endCol = merge.e.c;
-                // La valeur fusionnée est dans la cellule de départ
-                const value = rows[startRow]?.[startCol] ?? '';
-                // Appliquer cette valeur à toutes les cases de la plage fusionnée
-                for (let r = startRow; r <= endRow; r++) {
-                    // Rappel : colonne 0 = heure, donc colonne 1 = colonne "A"
-                    const time = rows[r]?.[0];
-                    if (!planningData[day][time]) continue;
-                    for (let c = startCol; c <= endCol; c++) {
-                        if (c === 0) continue; // ne jamais écrire sur la colonne des heures
-                        planningData[day][time][columns[c - 1]] = value;
-                    }
-                }
-            });
-
-            changedDay = true;
-            createPlanningGrid(day);
-        });
-
-        if (changedDay) {
-            alert("Importation terminée !");
-        } else {
-            alert("Aucune feuille nommée 'lundi', 'mardi', etc. trouvée dans le fichier.");
-        }
-    };
-    reader.readAsArrayBuffer(file);
-}
-function generateSynthesePersonneVolume() {
-    // Durée d'un créneau en minutes (à ADAPTER selon ton planning)
-    const slotDuration = 5; // change à 15 si besoin
-    // Création du mapping personne -> item -> nbre de créneaux
-    const personMap = {};
-    const itemMap = {};
-
-    days.forEach(day => {
-        timeSlots.forEach(time => {
-            columns.forEach(col => {
-                const value = planningData[day][time][col];
-                if (value && value.trim() !== "") {
-                    if (!personMap[col]) personMap[col] = {};
-                    if (!personMap[col][value]) personMap[col][value] = 0;
-                    personMap[col][value] += 1;
-                   // Mise à jour de itemMap
-                if (!itemMap[value]) itemMap[value] = [];
-                // On cherche si la personne existe déjà pour ce value dans itemMap
-                let personEntry = itemMap[value].find(entry => entry.col === col);
-                if (personEntry) {
-                    personEntry.nbre += 1;
-                } else {
-                    itemMap[value].push({ col, nbre: 1 });
-                }
-            }
-        });
-    });
-});
-
-    // Liste des personnes triées
-    const allPeople = Object.keys(personMap).sort();
-    // Liste des items (postes)
-    const allItems = Object.keys(itemMap).sort();;
-
-    // Construction du tableau HTML
-    let html = `<table class="table table-bordered"><thead><tr><th>Personne</th>`;
-    allItems.forEach(item => html += `<th>${item}</th>`);
-    html += `<th>Total</th></tr></thead><tbody>`;
-
-    allPeople.forEach(person => {
-        let totalMinutes = 0;
-        html += `<tr><td>${person}</td>`;
-        allItems.forEach(item => {
-            const count = personMap[person][item] || 0;
-            const minutes = count * slotDuration;
-            totalMinutes += minutes;
-            
-             const idCell = `id="${person.replace(/\s/g,'_')}+${item.replace(/\s/g,'_')}"`;
-        html += `<td ${idCell}>${minutes > 0 ? formatHM(minutes) : ""}</td>`;
-        });
-        html += `<td><b>${totalMinutes > 0 ? formatHM(totalMinutes) : ""}</b></td></tr>`;
-    });
-
-    html += `</tbody></table>`;
-    document.getElementById("synthese-table").innerHTML = html;
-    colorerSyntheseParItem(); // <-- Ajout ici
-}
-
-// Format X min => HhMMmin
-function formatHM(mins) {
-    if (mins <= 0) return "";
-    const h = Math.floor(mins / 60);
-    const m = mins % 60;
-    return h > 0 ? `${h}h${m > 0 ? m : ""}` : `${m}min`;
-}
-
-// Helper : minutes → format "XhYY" ou "ZZ min"
-function formatDuree(minutes) {
-    if (minutes >= 60) {
-        const h = Math.floor(minutes / 60);
-        const m = minutes % 60;
-        return h + 'h' + (m ? (m < 10 ? '0' : '') + m : '');
-    }
-    return minutes + ' min';
-}
-function generateSynthesePersonneParJour() {
-    const slotDuration = 5; // ou 15 si tu utilises 15 minutes
-    const personDayMap = {}; // { personne: { lundi: n, mardi: n, ... } }
-
-    days.forEach(day => {
-        timeSlots.forEach(time => {
-            columns.forEach(col => {
-                const value = planningData[day][time][col];
-                if (value && value.trim() !== "") {
-                    if (!personDayMap[col]) personDayMap[col] = {};
-                    if (!personDayMap[col][day]) personDayMap[col][day] = 0;
-                    personDayMap[col][day] += 1;
-                }
-            });
-        });
-    });
-
-    // Liste personnes triées
-    const allPeople = Object.keys(personDayMap).sort();
-
-    // Construction du tableau HTML
-    let html = `<table class="table table-bordered"><thead><tr><th>Personne</th>`;
-    days.forEach(day => html += `<th>${day.charAt(0).toUpperCase() + day.slice(1)}</th>`);
-    html += `<th>Total</th></tr></thead><tbody>`;
-
-    allPeople.forEach(person => {
-        let total = 0;
-        html += `<tr><td>${person}</td>`;
-        days.forEach(day => {
-            const count = (personDayMap[person][day] || 0);
-            const minutes = count * slotDuration;
-            total += minutes;
-            html += `<td>${minutes > 0 ? formatHM(minutes) : ""}</td>`;
-        });
-        html += `<td><b>${total > 0 ? formatHM(total) : ""}</b></td></tr>`;
-    });
-
-    html += `</tbody></table>`;
-    document.getElementById("syntheseJour-table").innerHTML = html;
-}
-function colorerSyntheseParItem() {
-    const table = document.querySelector('#synthese-table table');
-    if (!table) return;
-    const rows = Array.from(table.querySelectorAll('tbody tr'));
-    if (rows.length === 0) return;
-
-    // Récupère les items (postes) depuis l'en-tête
-    const ths = Array.from(table.querySelectorAll('thead th'));
-    const items = ths.slice(1, -1).map(th => th.textContent.trim()); // Ignore "Personne" et "Total"
-
-    // Trouve les index des colonnes à exclure (F et G)
-    const excludeColsLabels = ['F', 'G'];
-    const excludeIndexes = [];
-    items.forEach((item, idx) => {
-        if (excludeColsLabels.includes(item)) excludeIndexes.push(idx);
-    });
-
-    // Calcule la moyenne pour chaque poste (sauf F et G)
-    let moyennes = [];
-    items.forEach((item, colIdx) => {
-        if (excludeIndexes.includes(colIdx)) {
-            moyennes[colIdx] = null; // On ne calcule pas la moyenne pour F et G
-            return;
-        }
-        let total = 0, count = 0;
-        rows.forEach(row => {
-            const cell = row.querySelectorAll('td')[colIdx + 1];
-            if (!cell) return;
-            let minutes = 0;
-            let m = cell.textContent.match(/(\d+)h(\d+)?/);
-            if (m) {
-                minutes = parseInt(m[1]) * 60 + (m[2] ? parseInt(m[2]) : 0);
-            } else {
-                let m2 = cell.textContent.match(/(\d+)min/);
-                if (m2) minutes = parseInt(m2[1]);
-            }
-            if (minutes > 0) {
-                total += minutes;
-                count++;
-            }
-        });
-        moyennes[colIdx] = count ? total / count : 0;
-    });
-
-    // Applique les couleurs si l'écart dépasse ±60 min (sauf F et G)
-    rows.forEach(row => {
-        const cells = row.querySelectorAll('td');
-        items.forEach((item, colIdx) => {
-            if (excludeIndexes.includes(colIdx)) {
-                // Pas de couleur sur F et G, mais on nettoie le style
-                const cell = cells[colIdx + 1];
-                if (cell) {
-                    cell.style.backgroundColor = '';
-                    cell.style.fontWeight = '';
-                }
-                return;
-            }
-            const cell = cells[colIdx + 1];
-            if (!cell) return;
-            let minutes = 0;
-            let m = cell.textContent.match(/(\d+)h(\d+)?/);
-            if (m) {
-                minutes = parseInt(m[1]) * 60 + (m[2] ? parseInt(m[2]) : 0);
-            } else {
-                let m2 = cell.textContent.match(/(\d+)min/);
-                if (m2) minutes = parseInt(m2[1]);
-            }
-            let moyenne = moyennes[colIdx] || 0;
-            let color = '';
-            let ecart = minutes - moyenne;
-            if (minutes > 0 && Math.abs(ecart) > 60) {
-                if (ecart > 60) {
-                    // Violet, intensité selon l'écart positif
-                    let intensite = Math.min((ecart - 60) / (moyenne || 1), 1);
-                    color = `rgba(138, 43, 226, ${0.3 + 0.7 * intensite})`;
-                } else if (ecart < -60) {
-                    // Orange, intensité selon l'écart négatif
-                    let intensite = Math.min((-ecart - 60) / (moyenne || 1), 1);
-                    color = `rgba(255, 140, 0, ${0.3 + 0.7 * intensite})`;
-                }
-                cell.style.backgroundColor = color;
-                cell.style.fontWeight = "bold";
-            } else {
-                cell.style.backgroundColor = '';
-                cell.style.fontWeight = '';
-            }
-        });
-    });
-}
-function generatePDF() {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ unit: 'pt', format: 'a4', orientation: 'portrait' });
-
-    const activityColors = {
-        // ...déjà présent...
-    };
-
-    function getActivityKey(value) {
-        if (!value) return null;
-        let key = value.toLowerCase()
-            .replace(/\s+/g, '-')
-            .replace('renfort-surveillance', 'renfort')
-            .replace('réfectoire', 'refectoire');
-        return activityColors[key] ? key : null;
-    }
-
-    days.forEach((day, dayIdx) => {
-        if (dayIdx > 0) doc.addPage(); // Nouvelle page sauf pour le premier jour
-
-        // Titre du jour en haut de la page
-        doc.setFontSize(18);
-        doc.text(day.charAt(0).toUpperCase() + day.slice(1), 40, 40);
-
-        // Préparation des données à afficher
-        const headerRow = ['Heure', ...columns];
-        const dataRows = timeSlots.map(time =>
-            [time, ...columns.map(col => planningData[day][time][col] || '')]
-        );
-        const tableData = [headerRow, ...dataRows];
-
-        // Génération du tableau avec autoTable
-        doc.autoTable({
-            head: [headerRow],
-            body: dataRows,
-            startY: 60,
-            theme: 'grid',
-            styles: { fontSize: 8, cellPadding: 2 },
-            headStyles: { fillColor: [102, 126, 234], textColor: 255 },
-            didDrawCell: function (data) {
-                // Coloration selon activité
-                if (data.section === 'body' && data.column.index > 0) {
-                    const value = data.cell.raw;
-                    const colorKey = getActivityKey(value);
-                    if (colorKey) {
-                        const color = activityColors[colorKey];
-                        doc.setFillColor(...color);
-                        doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
-                        doc.setTextColor(255, 255, 255);
-                    } else {
-                        doc.setTextColor(0, 0, 0);
-                    }
-                }
-            }
-        });
-    });
-
-    doc.save('planning.pdf');
-}
     </script>
 </body>
 </html>
