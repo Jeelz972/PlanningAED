@@ -1258,8 +1258,8 @@ function generatePDF() {
             return;
         }
 
-        // Créer les données fusionnées
-        const mergedData = createMergedData(day, relevantSlots);
+        // Analyser les fusions pour chaque colonne
+        const mergeInfo = analyzeMerges(day, relevantSlots);
 
         // Calcul des dimensions pour que tout tienne sur une page
         const startY = 50;
@@ -1267,7 +1267,7 @@ function generatePDF() {
         const availableWidth = pageWidth - 40; // 20pt de marge de chaque côté
 
         // Calcul automatique des tailles
-        const totalRows = mergedData.length + 1; // +1 pour l'en-tête
+        const totalRows = relevantSlots.length + 1; // +1 pour l'en-tête
         const rowHeight = Math.max(8, Math.floor(availableHeight / totalRows));
         const fontSize = Math.max(4, Math.min(8, rowHeight - 2));
 
@@ -1275,70 +1275,66 @@ function generatePDF() {
         const timeColWidth = 50;
         const dataColWidth = (availableWidth - timeColWidth) / columns.length;
 
-        // Dessiner le tableau manuellement pour un contrôle total
-        drawPlanningTable(doc, day, mergedData, startY, timeColWidth, dataColWidth, rowHeight, fontSize);
+        // Dessiner le tableau avec les fusions
+        drawPlanningTableWithMerges(doc, day, relevantSlots, mergeInfo, startY, timeColWidth, dataColWidth, rowHeight, fontSize);
     });
 
-    doc.save('planning_hebdomadaire.pdf');
+    doc.save('EDT_hebdomadaire.pdf');
 }
 
-function createMergedData(day, relevantSlots) {
-    const mergedData = [];
+function analyzeMerges(day, relevantSlots) {
+    const mergeInfo = {};
     
     columns.forEach(col => {
+        mergeInfo[col] = [];
         let i = 0;
+        
         while (i < relevantSlots.length) {
             const currentTime = relevantSlots[i];
             const currentValue = planningData[day][currentTime][col];
             
             if (currentValue && currentValue.trim() !== '') {
-                let endIndex = i;
+                let mergeLength = 1;
                 
-                // Trouver tous les créneaux consécutifs avec la même valeur
-                while (endIndex + 1 < relevantSlots.length) {
-                    const nextTime = relevantSlots[endIndex + 1];
+                // Compter les créneaux consécutifs avec la même valeur
+                while (i + mergeLength < relevantSlots.length) {
+                    const nextTime = relevantSlots[i + mergeLength];
                     const nextValue = planningData[day][nextTime][col];
                     
                     if (nextValue === currentValue) {
-                        endIndex++;
+                        mergeLength++;
                     } else {
                         break;
                     }
                 }
                 
-                // Créer l'entrée fusionnée
-                const timeRange = i === endIndex ? 
-                    currentTime : 
-                    `${currentTime} - ${relevantSlots[endIndex]}`;
+                // Enregistrer les infos de fusion
+                for (let j = 0; j < mergeLength; j++) {
+                    mergeInfo[col][i + j] = {
+                        isFirst: j === 0,
+                        isLast: j === mergeLength - 1,
+                        mergeLength: mergeLength,
+                        value: currentValue
+                    };
+                }
                 
-                mergedData.push({
-                    timeRange: timeRange,
-                    column: col,
-                    value: currentValue,
-                    startIndex: i,
-                    endIndex: endIndex,
-                    rowSpan: endIndex - i + 1
-                });
-                
-                i = endIndex + 1;
+                i += mergeLength;
             } else {
+                mergeInfo[col][i] = {
+                    isFirst: true,
+                    isLast: true,
+                    mergeLength: 1,
+                    value: ''
+                };
                 i++;
             }
         }
     });
     
-    // Trier par heure de début et par colonne
-    mergedData.sort((a, b) => {
-        if (a.startIndex !== b.startIndex) {
-            return a.startIndex - b.startIndex;
-        }
-        return columns.indexOf(a.column) - columns.indexOf(b.column);
-    });
-    
-    return mergedData;
+    return mergeInfo;
 }
 
-function drawPlanningTable(doc, day, mergedData, startY, timeColWidth, dataColWidth, rowHeight, fontSize) {
+function drawPlanningTableWithMerges(doc, day, relevantSlots, mergeInfo, startY, timeColWidth, dataColWidth, rowHeight, fontSize) {
     let currentY = startY;
     
     // Dessiner l'en-tête
@@ -1364,45 +1360,51 @@ function drawPlanningTable(doc, day, mergedData, startY, timeColWidth, dataColWi
 
     currentY += rowHeight;
 
-    // Dessiner les lignes de données fusionnées
+    // Dessiner les lignes de données
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(fontSize);
     
-    mergedData.forEach((item, index) => {
-        const cellHeight = rowHeight * item.rowSpan;
-        
+    relevantSlots.forEach((time, rowIndex) => {
         // Fond alternant pour la lisibilité
-        if (index % 2 === 0) {
+        if (rowIndex % 2 === 0) {
             doc.setFillColor(248, 249, 250);
-            doc.rect(20, currentY, timeColWidth + (columns.length * dataColWidth), cellHeight, 'F');
+            doc.rect(20, currentY, timeColWidth + (columns.length * dataColWidth), rowHeight, 'F');
         }
 
         // Colonne heure
         doc.setTextColor(0, 0, 0);
         doc.setFont('helvetica', 'bold');
-        doc.text(item.timeRange, 20 + timeColWidth/2, currentY + cellHeight/2 + 2, { align: 'center' });
+        doc.text(time, 20 + timeColWidth/2, currentY + rowHeight/2 + 2, { align: 'center' });
 
-        // Colonne de données
+        // Colonnes de données avec fusion
         doc.setFont('helvetica', 'bold');
-        const colIndex = columns.indexOf(item.column);
-        const x = 20 + timeColWidth + (colIndex * dataColWidth);
-        
-        // Appliquer la couleur de fond selon l'activité
-        const color = getActivityColorRGB(item.value);
-        if (color) {
-            doc.setFillColor(color.r, color.g, color.b);
-            doc.rect(x, currentY, dataColWidth, cellHeight, 'F');
-            doc.setTextColor(255, 255, 255); // Texte blanc
-        } else {
-            doc.setTextColor(0, 0, 0); // Texte noir
-        }
-        
-        // Couper le texte s'il est trop long
-        const maxWidth = dataColWidth - 4;
-        const truncatedText = truncateText(doc, item.value, maxWidth, fontSize);
-        doc.text(truncatedText, x + dataColWidth/2, currentY + cellHeight/2 + 2, { align: 'center' });
+        columns.forEach((col, colIndex) => {
+            const merge = mergeInfo[col][rowIndex];
+            const x = 20 + timeColWidth + (colIndex * dataColWidth);
+            
+            if (merge && merge.value) {
+                // Appliquer la couleur de fond selon l'activité
+                const color = getActivityColorRGB(merge.value);
+                if (color) {
+                    const mergeHeight = rowHeight * merge.mergeLength;
+                    doc.setFillColor(color.r, color.g, color.b);
+                    doc.rect(x, currentY, dataColWidth, mergeHeight, 'F');
+                    doc.setTextColor(255, 255, 255); // Texte blanc
+                } else {
+                    doc.setTextColor(0, 0, 0); // Texte noir
+                }
+                
+                // Afficher le texte seulement sur la première cellule de la fusion
+                if (merge.isFirst) {
+                    const maxWidth = dataColWidth - 4;
+                    const truncatedText = truncateText(doc, merge.value, maxWidth, fontSize);
+                    const textY = currentY + (rowHeight * merge.mergeLength) / 2 + 2;
+                    doc.text(truncatedText, x + dataColWidth/2, textY, { align: 'center' });
+                }
+            }
+        });
 
-        currentY += cellHeight;
+        currentY += rowHeight;
     });
 
     // Dessiner les bordures du tableau
@@ -1411,23 +1413,41 @@ function drawPlanningTable(doc, day, mergedData, startY, timeColWidth, dataColWi
     
     // Bordures extérieures
     const tableWidth = timeColWidth + (columns.length * dataColWidth);
-    const tableHeight = currentY - startY;
+    const tableHeight = (relevantSlots.length + 1) * rowHeight;
     doc.rect(20, startY, tableWidth, tableHeight);
     
     // Lignes verticales
-    doc.line(20 + timeColWidth, startY, 20 + timeColWidth, currentY);
+    doc.line(20 + timeColWidth, startY, 20 + timeColWidth, startY + tableHeight);
     for (let i = 1; i < columns.length; i++) {
         const x = 20 + timeColWidth + (i * dataColWidth);
-        doc.line(x, startY, x, currentY);
+        doc.line(x, startY, x, startY + tableHeight);
     }
     
-    // Lignes horizontales pour chaque item fusionné
-    let tempY = startY + rowHeight; // Après l'en-tête
-    mergedData.forEach((item) => {
-        const cellHeight = rowHeight * item.rowSpan;
-        doc.line(20, tempY + cellHeight, 20 + tableWidth, tempY + cellHeight);
-        tempY += cellHeight;
-    });
+    // Lignes horizontales (en évitant les zones fusionnées)
+    for (let i = 1; i <= relevantSlots.length; i++) {
+        const y = startY + (i * rowHeight);
+        let lineX = 20;
+        
+        // Ligne pour la colonne heure
+        doc.line(lineX, y, lineX + timeColWidth, y);
+        lineX += timeColWidth;
+        
+        // Lignes pour chaque colonne de données
+        columns.forEach((col, colIndex) => {
+            const rowIndex = i - 1;
+            if (rowIndex < relevantSlots.length) {
+                const merge = mergeInfo[col][rowIndex];
+                // Dessiner la ligne seulement si c'est la dernière cellule d'une fusion
+                if (!merge || merge.isLast) {
+                    doc.line(lineX, y, lineX + dataColWidth, y);
+                }
+            } else {
+                // Dernière ligne du tableau
+                doc.line(lineX, y, lineX + dataColWidth, y);
+            }
+            lineX += dataColWidth;
+        });
+    }
 }
 
 // Gardez les autres fonctions inchangées
