@@ -1229,7 +1229,6 @@ const doc = new jsPDF(‘l’, ‘pt’, ‘a4’); // Format paysage
 const pageWidth = doc.internal.pageSize.getWidth(); // ~842pt
 const pageHeight = doc.internal.pageSize.getHeight(); // ~595pt
 
-```
 let isFirstPage = true;
 
 days.forEach((day, dayIndex) => {
@@ -1290,7 +1289,6 @@ days.forEach((day, dayIndex) => {
 });
 
 doc.save('planning_hebdomadaire.pdf');
-```
 
 }
 
@@ -1298,7 +1296,6 @@ function drawPlanningTableWithPagination(doc, day, relevantSlots, mergeInfo, sta
 const headerHeight = rowHeight;
 const maxRowsPerPage = Math.floor((availableHeight - headerHeight) / rowHeight);
 
-```
 let currentSlotIndex = 0;
 let pageNumber = 1;
 
@@ -1327,14 +1324,12 @@ while (currentSlotIndex < relevantSlots.length) {
     currentSlotIndex += slotsThisPage;
     pageNumber++;
 }
-```
 
 }
 
 function createPageMergeInfo(day, pageSlots, originalMergeInfo, startIndex) {
 const pageMergeInfo = {};
 
-```
 columns.forEach(col => {
     pageMergeInfo[col] = [];
     
@@ -1371,14 +1366,12 @@ columns.forEach(col => {
 });
 
 return pageMergeInfo;
-```
 
 }
 
 function analyzeMerges(day, relevantSlots) {
 const mergeInfo = {};
 
-```
 columns.forEach(col => {
     mergeInfo[col] = [];
     let i = 0;
@@ -1430,14 +1423,12 @@ columns.forEach(col => {
 });
 
 return mergeInfo;
-```
 
 }
 
 function drawPlanningTableWithMerges(doc, day, relevantSlots, mergeInfo, startY, timeColWidth, dataColWidth, rowHeight, fontSize) {
 let currentY = startY;
 
-```
 // Dessiner l'en-tête
 doc.setFillColor(102, 126, 234); // Couleur de fond bleu
 doc.rect(20, currentY, timeColWidth, rowHeight, 'F');
@@ -1570,7 +1561,6 @@ for (let i = 1; i <= relevantSlots.length; i++) {
         });
     }
 }
-```
 
 }
 
@@ -1579,13 +1569,11 @@ function getActivityColorRGB(value) {
 const hex = getActivityColor(value);
 if (!hex) return null;
 
-```
 return {
     r: parseInt(hex.substr(1, 2), 16),
     g: parseInt(hex.substr(3, 2), 16),
     b: parseInt(hex.substr(5, 2), 16)
 };
-```
 
 }
 
@@ -1593,7 +1581,6 @@ function truncateText(doc, text, maxWidth, fontSize) {
 doc.setFontSize(fontSize);
 const textWidth = doc.getTextWidth(text);
 
-```
 if (textWidth <= maxWidth) {
     return text;
 }
@@ -1605,7 +1592,6 @@ while (doc.getTextWidth(truncated + "...") > maxWidth && truncated.length > 0) {
 }
 
 return truncated + "...";
-```
 
 }
 
