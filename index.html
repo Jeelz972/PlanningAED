@@ -1230,48 +1230,62 @@ function generatePDF() {
 
     days.forEach((day, idx) => {
         if (idx > 0) doc.addPage();
-        doc.setFontSize(18);
-        doc.text(day.charAt(0).toUpperCase() + day.slice(1), pageWidth / 2, 40, { align: "center" });
+        doc.setFontSize(16);
+        doc.text(day.charAt(0).toUpperCase() + day.slice(1), pageWidth / 2, 30, { align: "center" });
 
-        // Prépare les données pour autoTable
-        const tableData = timeSlots.map(time => {
-            return [time, ...columns.map(col => planningData[day][time][col] || '')];
-        });
+        // Prépare les données
+        const tableData = timeSlots.map(time =>
+            [time, ...columns.map(col => planningData[day][time][col] || '')]
+        );
         const header = ['Heure', ...columns];
 
         doc.autoTable({
             head: [header],
             body: tableData,
-            startY: 60,
+            startY: 45,
             styles: {
                 font: "helvetica",
-                fontSize: 8,
+                fontSize: 6.3,                // Plus petit
+                cellPadding: 1.5,             // Réduit l'espace
                 halign: 'center',
                 valign: 'middle',
-                cellWidth: 'wrap'
+                cellWidth: 'wrap',
+                minCellHeight: 7               // Plus compact
+            },
+            columnStyles: {
+                0: { cellWidth: 23 },         // Colonne "Heure" plus étroite
+                1: { cellWidth: 14 },
+                2: { cellWidth: 14 },
+                3: { cellWidth: 14 },
+                4: { cellWidth: 14 },
+                5: { cellWidth: 14 },
+                6: { cellWidth: 14 },
+                7: { cellWidth: 14 }
             },
             headStyles: {
-                fillColor: [102, 126, 234], // Couleur entête
+                fillColor: [102, 126, 234],
                 textColor: 255,
-                fontStyle: 'bold'
+                fontStyle: 'bold',
+                fontSize: 7.5
             },
             didParseCell: function (data) {
                 if (data.section === 'body' && data.column.index > 0) {
                     const value = data.cell.raw;
                     const hex = getActivityColor(value);
                     if (hex) {
-                        // Convert HEX -> RGB array
                         const rgb = [
                             parseInt(hex.substr(1, 2), 16),
                             parseInt(hex.substr(3, 2), 16),
                             parseInt(hex.substr(5, 2), 16)
                         ];
                         data.cell.styles.fillColor = rgb;
-                        data.cell.styles.textColor = 255; // texte blanc
+                        data.cell.styles.textColor = 255;
                         data.cell.styles.fontStyle = 'bold';
                     }
                 }
-            }
+            },
+            pageBreak: 'avoid', // Évite de couper le tableau (condense au max)
+            margin: { top: 40, left: 14, right: 14, bottom: 10 }
         });
     });
 
