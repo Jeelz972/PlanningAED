@@ -1225,48 +1225,68 @@ function colorerSyntheseParItem() {
 }
 function generatePDF() {
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF('l', 'pt', 'a4'); // Paysage pour plus de largeur
+    const doc = new jsPDF('l', 'pt', 'a4'); // Paysage
     const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
 
     days.forEach((day, idx) => {
         if (idx > 0) doc.addPage();
-        doc.setFontSize(16);
-        doc.text(day.charAt(0).toUpperCase() + day.slice(1), pageWidth / 2, 30, { align: "center" });
+        
+        // Titre plus compact
+        doc.setFontSize(14);
+        doc.text(day.charAt(0).toUpperCase() + day.slice(1), pageWidth / 2, 25, { align: "center" });
 
-        // Prépare les données
-        const tableData = timeSlots.map(time =>
+        // Filtrer les lignes vides pour gagner de l'espace
+        const relevantTimeSlots = timeSlots.filter(time => {
+            return columns.some(col => planningData[day][time][col] && planningData[day][time][col].trim() !== '');
+        });
+
+        // Si aucune donnée, afficher un message
+        if (relevantTimeSlots.length === 0) {
+            doc.setFontSize(12);
+            doc.text("Aucune donnée pour ce jour", pageWidth / 2, pageHeight / 2, { align: "center" });
+            return;
+        }
+
+        const tableData = relevantTimeSlots.map(time =>
             [time, ...columns.map(col => planningData[day][time][col] || '')]
         );
         const header = ['Heure', ...columns];
 
+        // Calculer la hauteur disponible
+        const availableHeight = pageHeight - 60; // 25 pour le titre + 35 de marge
+        const maxRows = Math.floor(availableHeight / 8); // 8pt par ligne environ
+
         doc.autoTable({
             head: [header],
             body: tableData,
-            startY: 45,
+            startY: 35,
             styles: {
                 font: "helvetica",
-                fontSize: 6.3,                // Plus petit
-                cellPadding: 1.5,             // Réduit l'espace
+                fontSize: 5.5,                // Encore plus petit
+                cellPadding: 1,               // Minimum
                 halign: 'center',
                 valign: 'middle',
                 cellWidth: 'wrap',
-                minCellHeight: 7               // Plus compact
+                minCellHeight: 6,             // Plus compact
+                lineWidth: 0.1                // Bordures plus fines
             },
             columnStyles: {
-                0: { cellWidth: 23 },         // Colonne "Heure" plus étroite
-                1: { cellWidth: 14 },
-                2: { cellWidth: 14 },
-                3: { cellWidth: 14 },
-                4: { cellWidth: 14 },
-                5: { cellWidth: 14 },
-                6: { cellWidth: 14 },
-                7: { cellWidth: 14 }
+                0: { cellWidth: 20 },         // Heure très étroite
+                1: { cellWidth: 12 },
+                2: { cellWidth: 12 },
+                3: { cellWidth: 12 },
+                4: { cellWidth: 12 },
+                5: { cellWidth: 12 },
+                6: { cellWidth: 12 },
+                7: { cellWidth: 12 }
             },
             headStyles: {
                 fillColor: [102, 126, 234],
                 textColor: 255,
                 fontStyle: 'bold',
-                fontSize: 7.5
+                fontSize: 6.5,
+                minCellHeight: 8
             },
             didParseCell: function (data) {
                 if (data.section === 'body' && data.column.index > 0) {
@@ -1284,8 +1304,13 @@ function generatePDF() {
                     }
                 }
             },
-            pageBreak: 'avoid', // Évite de couper le tableau (condense au max)
-            margin: { top: 40, left: 14, right: 14, bottom: 10 }
+            margin: { top: 35, left: 10, right: 10, bottom: 10 },
+            tableWidth: 'auto',
+            // Forcer le tableau à tenir sur une page
+            pageBreak: 'avoid',
+            showHead: 'firstPage',
+            // Réduire l'espacement si nécessaire
+            theme: 'plain'
         });
     });
 
