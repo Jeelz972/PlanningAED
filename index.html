@@ -1225,98 +1225,182 @@ function colorerSyntheseParItem() {
 }
 function generatePDF() {
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF('l', 'pt', 'a4'); // Paysage
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
+    const doc = new jsPDF('l', 'pt', 'a4'); // Format paysage
+    const pageWidth = doc.internal.pageSize.getWidth(); // ~842pt
+    const pageHeight = doc.internal.pageSize.getHeight(); // ~595pt
+    
+    let isFirstPage = true;
 
-    days.forEach((day, idx) => {
-        if (idx > 0) doc.addPage();
-        
-        // Titre plus compact
-        doc.setFontSize(14);
-        doc.text(day.charAt(0).toUpperCase() + day.slice(1), pageWidth / 2, 25, { align: "center" });
+    days.forEach((day, dayIndex) => {
+        // Ajouter une nouvelle page sauf pour le premier jour
+        if (!isFirstPage) {
+            doc.addPage();
+        }
+        isFirstPage = false;
 
-        // Filtrer les lignes vides pour gagner de l'espace
-        const relevantTimeSlots = timeSlots.filter(time => {
-            return columns.some(col => planningData[day][time][col] && planningData[day][time][col].trim() !== '');
+        // Titre du jour
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.text(day.charAt(0).toUpperCase() + day.slice(1), pageWidth / 2, 30, { align: "center" });
+
+        // Filtrer les créneaux qui ont au moins une donnée
+        const relevantSlots = timeSlots.filter(time => {
+            return columns.some(col => {
+                const value = planningData[day][time][col];
+                return value && value.trim() !== '';
+            });
         });
 
-        // Si aucune donnée, afficher un message
-        if (relevantTimeSlots.length === 0) {
+        if (relevantSlots.length === 0) {
             doc.setFontSize(12);
+            doc.setFont('helvetica', 'normal');
             doc.text("Aucune donnée pour ce jour", pageWidth / 2, pageHeight / 2, { align: "center" });
             return;
         }
 
-        const tableData = relevantTimeSlots.map(time =>
-            [time, ...columns.map(col => planningData[day][time][col] || '')]
-        );
-        const header = ['Heure', ...columns];
+        // Calcul des dimensions pour que tout tienne sur une page
+        const startY = 50;
+        const availableHeight = pageHeight - startY - 20; // 20pt de marge en bas
+        const availableWidth = pageWidth - 40; // 20pt de marge de chaque côté
 
-        // Calculer la hauteur disponible
-        const availableHeight = pageHeight - 60; // 25 pour le titre + 35 de marge
-        const maxRows = Math.floor(availableHeight / 8); // 8pt par ligne environ
+        // Calcul automatique des tailles
+        const totalRows = relevantSlots.length + 1; // +1 pour l'en-tête
+        const rowHeight = Math.max(8, Math.floor(availableHeight / totalRows));
+        const fontSize = Math.max(4, Math.min(8, rowHeight - 2));
 
-        doc.autoTable({
-            head: [header],
-            body: tableData,
-            startY: 35,
-            styles: {
-                font: "helvetica",
-                fontSize: 5.5,                // Encore plus petit
-                cellPadding: 1,               // Minimum
-                halign: 'center',
-                valign: 'middle',
-                cellWidth: 'wrap',
-                minCellHeight: 6,             // Plus compact
-                lineWidth: 0.1                // Bordures plus fines
-            },
-            columnStyles: {
-                0: { cellWidth: 20 },         // Heure très étroite
-                1: { cellWidth: 12 },
-                2: { cellWidth: 12 },
-                3: { cellWidth: 12 },
-                4: { cellWidth: 12 },
-                5: { cellWidth: 12 },
-                6: { cellWidth: 12 },
-                7: { cellWidth: 12 }
-            },
-            headStyles: {
-                fillColor: [102, 126, 234],
-                textColor: 255,
-                fontStyle: 'bold',
-                fontSize: 6.5,
-                minCellHeight: 8
-            },
-            didParseCell: function (data) {
-                if (data.section === 'body' && data.column.index > 0) {
-                    const value = data.cell.raw;
-                    const hex = getActivityColor(value);
-                    if (hex) {
-                        const rgb = [
-                            parseInt(hex.substr(1, 2), 16),
-                            parseInt(hex.substr(3, 2), 16),
-                            parseInt(hex.substr(5, 2), 16)
-                        ];
-                        data.cell.styles.fillColor = rgb;
-                        data.cell.styles.textColor = 255;
-                        data.cell.styles.fontStyle = 'bold';
-                    }
-                }
-            },
-            margin: { top: 35, left: 10, right: 10, bottom: 10 },
-            tableWidth: 'auto',
-            // Forcer le tableau à tenir sur une page
-            pageBreak: 'avoid',
-            showHead: 'firstPage',
-            // Réduire l'espacement si nécessaire
-            theme: 'plain'
-        });
+        // Largeurs des colonnes
+        const timeColWidth = 50;
+        const dataColWidth = (availableWidth - timeColWidth) / columns.length;
+
+        // Dessiner le tableau manuellement pour un contrôle total
+        drawPlanningTable(doc, day, relevantSlots, startY, timeColWidth, dataColWidth, rowHeight, fontSize);
     });
 
     doc.save('planning_hebdomadaire.pdf');
 }
-        function getActivityColor(value) {
+
+function drawPlanningTable(doc, day, relevantSlots, startY, timeColWidth, dataColWidth, rowHeight, fontSize) {
+    let currentY = startY;
+    
+    // Dessiner l'en-tête
+    doc.setFillColor(102, 126, 234); // Couleur de fond bleu
+    doc.rect(20, currentY, timeColWidth, rowHeight, 'F');
+    
+    columns.forEach((col, index) => {
+        const x = 20 + timeColWidth + (index * dataColWidth);
+        doc.rect(x, currentY, dataColWidth, rowHeight, 'F');
+    });
+
+    // Texte de l'en-tête
+    doc.setTextColor(255, 255, 255); // Blanc
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(fontSize + 1);
+    
+    doc.text('Heure', 20 + timeColWidth/2, currentY + rowHeight/2 + 2, { align: 'center' });
+    
+    columns.forEach((col, index) => {
+        const x = 20 + timeColWidth + (index * dataColWidth);
+        doc.text(col, x + dataColWidth/2, currentY + rowHeight/2 + 2, { align: 'center' });
+    });
+
+    currentY += rowHeight;
+
+    // Dessiner les lignes de données
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(fontSize);
+    
+    relevantSlots.forEach((time, rowIndex) => {
+        // Fond alternant pour la lisibilité
+        if (rowIndex % 2 === 0) {
+            doc.setFillColor(248, 249, 250);
+            doc.rect(20, currentY, timeColWidth + (columns.length * dataColWidth), rowHeight, 'F');
+        }
+
+        // Colonne heure
+        doc.setTextColor(0, 0, 0);
+        doc.setFont('helvetica', 'bold');
+        doc.text(time, 20 + timeColWidth/2, currentY + rowHeight/2 + 2, { align: 'center' });
+
+        // Colonnes de données
+        doc.setFont('helvetica', 'bold');
+        columns.forEach((col, colIndex) => {
+            const value = planningData[day][time][col] || '';
+            const x = 20 + timeColWidth + (colIndex * dataColWidth);
+            
+            if (value) {
+                // Appliquer la couleur de fond selon l'activité
+                const color = getActivityColorRGB(value);
+                if (color) {
+                    doc.setFillColor(color.r, color.g, color.b);
+                    doc.rect(x, currentY, dataColWidth, rowHeight, 'F');
+                    doc.setTextColor(255, 255, 255); // Texte blanc
+                } else {
+                    doc.setTextColor(0, 0, 0); // Texte noir
+                }
+                
+                // Couper le texte s'il est trop long
+                const maxWidth = dataColWidth - 4;
+                const truncatedText = truncateText(doc, value, maxWidth, fontSize);
+                doc.text(truncatedText, x + dataColWidth/2, currentY + rowHeight/2 + 2, { align: 'center' });
+            }
+        });
+
+        currentY += rowHeight;
+    });
+
+    // Dessiner les bordures du tableau
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.5);
+    
+    // Bordures extérieures
+    const tableWidth = timeColWidth + (columns.length * dataColWidth);
+    const tableHeight = (relevantSlots.length + 1) * rowHeight;
+    doc.rect(20, startY, tableWidth, tableHeight);
+    
+    // Lignes verticales
+    doc.line(20 + timeColWidth, startY, 20 + timeColWidth, startY + tableHeight);
+    for (let i = 1; i < columns.length; i++) {
+        const x = 20 + timeColWidth + (i * dataColWidth);
+        doc.line(x, startY, x, startY + tableHeight);
+    }
+    
+    // Lignes horizontales
+    for (let i = 1; i <= relevantSlots.length; i++) {
+        const y = startY + (i * rowHeight);
+        doc.line(20, y, 20 + tableWidth, y);
+    }
+}
+
+function getActivityColorRGB(value) {
+    const hex = getActivityColor(value);
+    if (!hex) return null;
+    
+    return {
+        r: parseInt(hex.substr(1, 2), 16),
+        g: parseInt(hex.substr(3, 2), 16),
+        b: parseInt(hex.substr(5, 2), 16)
+    };
+}
+
+function truncateText(doc, text, maxWidth, fontSize) {
+    doc.setFontSize(fontSize);
+    const textWidth = doc.getTextWidth(text);
+    
+    if (textWidth <= maxWidth) {
+        return text;
+    }
+    
+    // Couper le texte et ajouter "..."
+    let truncated = text;
+    while (doc.getTextWidth(truncated + "...") > maxWidth && truncated.length > 0) {
+        truncated = truncated.slice(0, -1);
+    }
+    
+    return truncated + "...";
+}
+
+// Fonction auxiliaire pour obtenir la couleur d'une activité (gardez votre fonction existante)
+function getActivityColor(value) {
     if (!value) return null;
     let key = value.toLowerCase()
         .replace(/\s+/g, '-')
@@ -1341,7 +1425,6 @@ function generatePDF() {
         'marsons': '#00bcd4'
     };
     return activityColors[key] || null;
-}
-    </script>
+}</script>
 </body>
 </html>
