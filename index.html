@@ -488,7 +488,7 @@
         let startCol = null;
         let startRow = null;
         let planningData = {};
-        // Table de correspondance pour l’affichage (affichage => interne)
+        // Table de correspondance pour l'affichage (affichage => interne)
 const affichageMapping = {
   'Voltige': 'Suivi de classe/accompagnement élèves/aide bureau',
   'Renfort surveillance': 'Cours/WC/Hall'
@@ -502,7 +502,7 @@ function getAffichage(nom) {
   return affichageMapping[nom] || nom;
 }
 function getNomInterne(nom) {
-  // pour l’enregistrement/import/export
+  // pour l'enregistrement/import/export
   return affichageReverseMapping[nom] || nom;
 }
         // Initialiser les données de planning
@@ -976,7 +976,7 @@ function createPlanningCell(day, time, col) {
 
             // On parse les données "classiquement"
             const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-            // On va d’abord remplir normalement
+            // On va d'abord remplir normalement
             for (let i = 1; i < rows.length; i++) { // Commence à 1 (skip header)
                 const row = rows[i];
                 const time = row[0];
@@ -1598,26 +1598,26 @@ return truncated + "...";
 function getActivityColor(value) {
 if (!value) return null;
 let key = value.toLowerCase()
-.replace(/\s+/g, ‘-’)
-.replace(‘renfort-surveillance’, ‘renfort’)
-.replace(‘réfectoire’, ‘refectoire’);
+.replace(/\s+/g, '-')
+.replace('renfort-surveillance', 'renfort')
+.replace('réfectoire', 'refectoire');
 const activityColors = {
-‘bvs1’: ‘#e91e63’,
-‘bvs2’: ‘#ff9800’,
-‘portail’: ‘#ff5722’,
-‘voltige’: ‘#2196f3’,
-‘renfort’: ‘#795548’,
-‘cours-impaire’: ‘#4caf50’,
-‘cours-paire’: ‘#8bc34a’,
-‘etude-impaire’: ‘#9c27b0’,
-‘etude-paire’: ‘#673ab7’,
-‘ap’: ‘#009688’,
-‘hall’: ‘#607d8b’,
-‘refectoire’: ‘#ff6f00’,
-‘turbo’: ‘#f44336’,
-‘bureau-midi’: ‘#3f51b5’,
-‘pause’: ‘#9e9e9e’,
-‘marsons’: ‘#00bcd4’
+'bvs1': '#e91e63',
+'bvs2': '#ff9800',
+'portail': '#ff5722',
+'voltige': '#2196f3',
+'renfort': '#795548',
+'cours-impaire': '#4caf50',
+'cours-paire': '#8bc34a',
+'etude-impaire': '#9c27b0',
+'etude-paire': '#673ab7',
+'ap': '#009688',
+'hall': '#607d8b',
+'refectoire': '#ff6f00',
+'turbo': '#f44336',
+'bureau-midi': '#3f51b5',
+'pause': '#9e9e9e',
+'marsons': '#00bcd4'
 };
 return activityColors[key] || null;
 }
