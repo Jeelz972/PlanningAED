@@ -1258,13 +1258,16 @@ function generatePDF() {
             return;
         }
 
+        // Créer les données fusionnées
+        const mergedData = createMergedData(day, relevantSlots);
+
         // Calcul des dimensions pour que tout tienne sur une page
         const startY = 50;
         const availableHeight = pageHeight - startY - 20; // 20pt de marge en bas
         const availableWidth = pageWidth - 40; // 20pt de marge de chaque côté
 
         // Calcul automatique des tailles
-        const totalRows = relevantSlots.length + 1; // +1 pour l'en-tête
+        const totalRows = mergedData.length + 1; // +1 pour l'en-tête
         const rowHeight = Math.max(8, Math.floor(availableHeight / totalRows));
         const fontSize = Math.max(4, Math.min(8, rowHeight - 2));
 
@@ -1273,13 +1276,69 @@ function generatePDF() {
         const dataColWidth = (availableWidth - timeColWidth) / columns.length;
 
         // Dessiner le tableau manuellement pour un contrôle total
-        drawPlanningTable(doc, day, relevantSlots, startY, timeColWidth, dataColWidth, rowHeight, fontSize);
+        drawPlanningTable(doc, day, mergedData, startY, timeColWidth, dataColWidth, rowHeight, fontSize);
     });
 
     doc.save('planning_hebdomadaire.pdf');
 }
 
-function drawPlanningTable(doc, day, relevantSlots, startY, timeColWidth, dataColWidth, rowHeight, fontSize) {
+function createMergedData(day, relevantSlots) {
+    const mergedData = [];
+    
+    columns.forEach(col => {
+        let i = 0;
+        while (i < relevantSlots.length) {
+            const currentTime = relevantSlots[i];
+            const currentValue = planningData[day][currentTime][col];
+            
+            if (currentValue && currentValue.trim() !== '') {
+                let endIndex = i;
+                
+                // Trouver tous les créneaux consécutifs avec la même valeur
+                while (endIndex + 1 < relevantSlots.length) {
+                    const nextTime = relevantSlots[endIndex + 1];
+                    const nextValue = planningData[day][nextTime][col];
+                    
+                    if (nextValue === currentValue) {
+                        endIndex++;
+                    } else {
+                        break;
+                    }
+                }
+                
+                // Créer l'entrée fusionnée
+                const timeRange = i === endIndex ? 
+                    currentTime : 
+                    `${currentTime} - ${relevantSlots[endIndex]}`;
+                
+                mergedData.push({
+                    timeRange: timeRange,
+                    column: col,
+                    value: currentValue,
+                    startIndex: i,
+                    endIndex: endIndex,
+                    rowSpan: endIndex - i + 1
+                });
+                
+                i = endIndex + 1;
+            } else {
+                i++;
+            }
+        }
+    });
+    
+    // Trier par heure de début et par colonne
+    mergedData.sort((a, b) => {
+        if (a.startIndex !== b.startIndex) {
+            return a.startIndex - b.startIndex;
+        }
+        return columns.indexOf(a.column) - columns.indexOf(b.column);
+    });
+    
+    return mergedData;
+}
+
+function drawPlanningTable(doc, day, mergedData, startY, timeColWidth, dataColWidth, rowHeight, fontSize) {
     let currentY = startY;
     
     // Dessiner l'en-tête
@@ -1305,47 +1364,45 @@ function drawPlanningTable(doc, day, relevantSlots, startY, timeColWidth, dataCo
 
     currentY += rowHeight;
 
-    // Dessiner les lignes de données
+    // Dessiner les lignes de données fusionnées
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(fontSize);
     
-    relevantSlots.forEach((time, rowIndex) => {
+    mergedData.forEach((item, index) => {
+        const cellHeight = rowHeight * item.rowSpan;
+        
         // Fond alternant pour la lisibilité
-        if (rowIndex % 2 === 0) {
+        if (index % 2 === 0) {
             doc.setFillColor(248, 249, 250);
-            doc.rect(20, currentY, timeColWidth + (columns.length * dataColWidth), rowHeight, 'F');
+            doc.rect(20, currentY, timeColWidth + (columns.length * dataColWidth), cellHeight, 'F');
         }
 
         // Colonne heure
         doc.setTextColor(0, 0, 0);
         doc.setFont('helvetica', 'bold');
-        doc.text(time, 20 + timeColWidth/2, currentY + rowHeight/2 + 2, { align: 'center' });
+        doc.text(item.timeRange, 20 + timeColWidth/2, currentY + cellHeight/2 + 2, { align: 'center' });
 
-        // Colonnes de données
+        // Colonne de données
         doc.setFont('helvetica', 'bold');
-        columns.forEach((col, colIndex) => {
-            const value = planningData[day][time][col] || '';
-            const x = 20 + timeColWidth + (colIndex * dataColWidth);
-            
-            if (value) {
-                // Appliquer la couleur de fond selon l'activité
-                const color = getActivityColorRGB(value);
-                if (color) {
-                    doc.setFillColor(color.r, color.g, color.b);
-                    doc.rect(x, currentY, dataColWidth, rowHeight, 'F');
-                    doc.setTextColor(255, 255, 255); // Texte blanc
-                } else {
-                    doc.setTextColor(0, 0, 0); // Texte noir
-                }
-                
-                // Couper le texte s'il est trop long
-                const maxWidth = dataColWidth - 4;
-                const truncatedText = truncateText(doc, value, maxWidth, fontSize);
-                doc.text(truncatedText, x + dataColWidth/2, currentY + rowHeight/2 + 2, { align: 'center' });
-            }
-        });
+        const colIndex = columns.indexOf(item.column);
+        const x = 20 + timeColWidth + (colIndex * dataColWidth);
+        
+        // Appliquer la couleur de fond selon l'activité
+        const color = getActivityColorRGB(item.value);
+        if (color) {
+            doc.setFillColor(color.r, color.g, color.b);
+            doc.rect(x, currentY, dataColWidth, cellHeight, 'F');
+            doc.setTextColor(255, 255, 255); // Texte blanc
+        } else {
+            doc.setTextColor(0, 0, 0); // Texte noir
+        }
+        
+        // Couper le texte s'il est trop long
+        const maxWidth = dataColWidth - 4;
+        const truncatedText = truncateText(doc, item.value, maxWidth, fontSize);
+        doc.text(truncatedText, x + dataColWidth/2, currentY + cellHeight/2 + 2, { align: 'center' });
 
-        currentY += rowHeight;
+        currentY += cellHeight;
     });
 
     // Dessiner les bordures du tableau
@@ -1354,23 +1411,26 @@ function drawPlanningTable(doc, day, relevantSlots, startY, timeColWidth, dataCo
     
     // Bordures extérieures
     const tableWidth = timeColWidth + (columns.length * dataColWidth);
-    const tableHeight = (relevantSlots.length + 1) * rowHeight;
+    const tableHeight = currentY - startY;
     doc.rect(20, startY, tableWidth, tableHeight);
     
     // Lignes verticales
-    doc.line(20 + timeColWidth, startY, 20 + timeColWidth, startY + tableHeight);
+    doc.line(20 + timeColWidth, startY, 20 + timeColWidth, currentY);
     for (let i = 1; i < columns.length; i++) {
         const x = 20 + timeColWidth + (i * dataColWidth);
-        doc.line(x, startY, x, startY + tableHeight);
+        doc.line(x, startY, x, currentY);
     }
     
-    // Lignes horizontales
-    for (let i = 1; i <= relevantSlots.length; i++) {
-        const y = startY + (i * rowHeight);
-        doc.line(20, y, 20 + tableWidth, y);
-    }
+    // Lignes horizontales pour chaque item fusionné
+    let tempY = startY + rowHeight; // Après l'en-tête
+    mergedData.forEach((item) => {
+        const cellHeight = rowHeight * item.rowSpan;
+        doc.line(20, tempY + cellHeight, 20 + tableWidth, tempY + cellHeight);
+        tempY += cellHeight;
+    });
 }
 
+// Gardez les autres fonctions inchangées
 function getActivityColorRGB(value) {
     const hex = getActivityColor(value);
     if (!hex) return null;
@@ -1399,7 +1459,6 @@ function truncateText(doc, text, maxWidth, fontSize) {
     return truncated + "...";
 }
 
-// Fonction auxiliaire pour obtenir la couleur d'une activité (gardez votre fonction existante)
 function getActivityColor(value) {
     if (!value) return null;
     let key = value.toLowerCase()
@@ -1425,6 +1484,7 @@ function getActivityColor(value) {
         'marsons': '#00bcd4'
     };
     return activityColors[key] || null;
-}</script>
+}
+    </script>
 </body>
 </html>
