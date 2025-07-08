@@ -1224,311 +1224,416 @@ function colorerSyntheseParItem() {
     });
 }
 function generatePDF() {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF('l', 'pt', 'a4'); // Format paysage
-    const pageWidth = doc.internal.pageSize.getWidth(); // ~842pt
-    const pageHeight = doc.internal.pageSize.getHeight(); // ~595pt
-    
-    let isFirstPage = true;
+const { jsPDF } = window.jspdf;
+const doc = new jsPDF(‘l’, ‘pt’, ‘a4’); // Format paysage
+const pageWidth = doc.internal.pageSize.getWidth(); // ~842pt
+const pageHeight = doc.internal.pageSize.getHeight(); // ~595pt
 
-    days.forEach((day, dayIndex) => {
-        // Ajouter une nouvelle page sauf pour le premier jour
-        if (!isFirstPage) {
-            doc.addPage();
-        }
-        isFirstPage = false;
+```
+let isFirstPage = true;
 
-        // Titre du jour
-        doc.setFontSize(16);
-        doc.setFont('helvetica', 'bold');
-        doc.text(day.charAt(0).toUpperCase() + day.slice(1), pageWidth / 2, 30, { align: "center" });
+days.forEach((day, dayIndex) => {
+    // Ajouter une nouvelle page sauf pour le premier jour
+    if (!isFirstPage) {
+        doc.addPage();
+    }
+    isFirstPage = false;
 
-        // Filtrer les créneaux qui ont au moins une donnée
-        const relevantSlots = timeSlots.filter(time => {
-            return columns.some(col => {
-                const value = planningData[day][time][col];
-                return value && value.trim() !== '';
-            });
+    // Titre du jour
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text(day.charAt(0).toUpperCase() + day.slice(1), pageWidth / 2, 30, { align: "center" });
+
+    // Filtrer les créneaux qui ont au moins une donnée
+    const relevantSlots = timeSlots.filter(time => {
+        return columns.some(col => {
+            const value = planningData[day][time][col];
+            return value && value.trim() !== '';
         });
-
-        if (relevantSlots.length === 0) {
-            doc.setFontSize(12);
-            doc.setFont('helvetica', 'normal');
-            doc.text("Aucune donnée pour ce jour", pageWidth / 2, pageHeight / 2, { align: "center" });
-            return;
-        }
-
-        // Analyser les fusions pour chaque colonne
-        const mergeInfo = analyzeMerges(day, relevantSlots);
-
-        // Calcul des dimensions pour que tout tienne sur une page
-        const startY = 50;
-        const availableHeight = pageHeight - startY - 20; // 20pt de marge en bas
-        const availableWidth = pageWidth - 40; // 20pt de marge de chaque côté
-
-        // Calcul automatique des tailles
-        const totalRows = relevantSlots.length + 1; // +1 pour l'en-tête
-        const rowHeight = Math.max(8, Math.floor(availableHeight / totalRows));
-        const fontSize = Math.max(4, Math.min(8, rowHeight - 2));
-
-        // Largeurs des colonnes
-        const timeColWidth = 50;
-        const dataColWidth = (availableWidth - timeColWidth) / columns.length;
-
-        // Dessiner le tableau avec les fusions
-        drawPlanningTableWithMerges(doc, day, relevantSlots, mergeInfo, startY, timeColWidth, dataColWidth, rowHeight, fontSize);
     });
 
-    doc.save('planning_hebdomadaire.pdf');
+    if (relevantSlots.length === 0) {
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'normal');
+        doc.text("Aucune donnée pour ce jour", pageWidth / 2, pageHeight / 2, { align: "center" });
+        return;
+    }
+
+    // Analyser les fusions pour chaque colonne
+    const mergeInfo = analyzeMerges(day, relevantSlots);
+
+    // Calcul des dimensions pour que tout tienne sur une page
+    const startY = 50;
+    const availableHeight = pageHeight - startY - 20; // 20pt de marge en bas
+    const availableWidth = pageWidth - 40; // 20pt de marge de chaque côté
+
+    // Calcul automatique des tailles
+    const totalRows = relevantSlots.length + 1; // +1 pour l'en-tête
+    const minRowHeight = 15; // Hauteur minimale pour la lisibilité
+    const rowHeight = Math.max(minRowHeight, Math.floor(availableHeight / totalRows));
+    const fontSize = Math.max(6, Math.min(10, rowHeight - 2));
+
+    // Largeurs des colonnes
+    const timeColWidth = 60;
+    const dataColWidth = (availableWidth - timeColWidth) / columns.length;
+
+    // Vérifier si le contenu peut tenir sur une page
+    const totalTableHeight = totalRows * rowHeight;
+    
+    if (totalTableHeight > availableHeight) {
+        // Le contenu est trop grand, diviser en plusieurs pages
+        drawPlanningTableWithPagination(doc, day, relevantSlots, mergeInfo, startY, timeColWidth, dataColWidth, minRowHeight, fontSize, availableHeight, pageWidth, pageHeight);
+    } else {
+        // Le contenu peut tenir sur une page
+        drawPlanningTableWithMerges(doc, day, relevantSlots, mergeInfo, startY, timeColWidth, dataColWidth, rowHeight, fontSize);
+    }
+});
+
+doc.save('planning_hebdomadaire.pdf');
+```
+
+}
+
+function drawPlanningTableWithPagination(doc, day, relevantSlots, mergeInfo, startY, timeColWidth, dataColWidth, rowHeight, fontSize, availableHeight, pageWidth, pageHeight) {
+const headerHeight = rowHeight;
+const maxRowsPerPage = Math.floor((availableHeight - headerHeight) / rowHeight);
+
+```
+let currentSlotIndex = 0;
+let pageNumber = 1;
+
+while (currentSlotIndex < relevantSlots.length) {
+    // Ajouter une nouvelle page si ce n'est pas la première partie
+    if (pageNumber > 1) {
+        doc.addPage();
+        
+        // Redessiner le titre du jour
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`${day.charAt(0).toUpperCase() + day.slice(1)} (${pageNumber}/${Math.ceil(relevantSlots.length / maxRowsPerPage)})`, pageWidth / 2, 30, { align: "center" });
+    }
+    
+    // Calculer combien de lignes on peut afficher sur cette page
+    const remainingSlots = relevantSlots.length - currentSlotIndex;
+    const slotsThisPage = Math.min(maxRowsPerPage, remainingSlots);
+    const currentPageSlots = relevantSlots.slice(currentSlotIndex, currentSlotIndex + slotsThisPage);
+    
+    // Créer les informations de fusion pour cette page
+    const pageMergeInfo = createPageMergeInfo(day, currentPageSlots, mergeInfo, currentSlotIndex);
+    
+    // Dessiner le tableau pour cette page
+    drawPlanningTableWithMerges(doc, day, currentPageSlots, pageMergeInfo, startY, timeColWidth, dataColWidth, rowHeight, fontSize);
+    
+    currentSlotIndex += slotsThisPage;
+    pageNumber++;
+}
+```
+
+}
+
+function createPageMergeInfo(day, pageSlots, originalMergeInfo, startIndex) {
+const pageMergeInfo = {};
+
+```
+columns.forEach(col => {
+    pageMergeInfo[col] = [];
+    
+    pageSlots.forEach((time, pageIndex) => {
+        const originalIndex = startIndex + pageIndex;
+        const originalMerge = originalMergeInfo[col][originalIndex];
+        
+        if (originalMerge) {
+            // Ajuster les informations de fusion pour cette page
+            const isFirstInOriginal = originalMerge.isFirst;
+            const isLastInOriginal = originalMerge.isLast;
+            const originalStartRow = originalMerge.startRow;
+            const originalEndRow = originalStartRow + originalMerge.mergeLength - 1;
+            
+            // Calculer si cette cellule est la première ou la dernière visible sur cette page
+            const isFirstVisible = pageIndex === 0 || isFirstInOriginal;
+            const isLastVisible = pageIndex === pageSlots.length - 1 || isLastInOriginal;
+            
+            // Calculer la longueur de fusion visible sur cette page
+            const visibleStart = Math.max(originalStartRow, startIndex);
+            const visibleEnd = Math.min(originalEndRow, startIndex + pageSlots.length - 1);
+            const visibleLength = visibleEnd - visibleStart + 1;
+            
+            pageMergeInfo[col][pageIndex] = {
+                isFirst: originalIndex === visibleStart,
+                isLast: originalIndex === visibleEnd,
+                mergeLength: visibleLength,
+                value: originalMerge.value,
+                startRow: pageIndex - (originalIndex - visibleStart),
+                isMerged: originalMerge.isMerged
+            };
+        }
+    });
+});
+
+return pageMergeInfo;
+```
+
 }
 
 function analyzeMerges(day, relevantSlots) {
-    const mergeInfo = {};
-    
-    columns.forEach(col => {
-        mergeInfo[col] = [];
-        let i = 0;
-        
-        while (i < relevantSlots.length) {
-            const currentTime = relevantSlots[i];
-            const currentValue = planningData[day][currentTime][col];
-            
-            if (currentValue && currentValue.trim() !== '') {
-                let mergeLength = 1;
-                
-                // Compter les créneaux consécutifs avec la même valeur
-                while (i + mergeLength < relevantSlots.length) {
-                    const nextTime = relevantSlots[i + mergeLength];
-                    const nextValue = planningData[day][nextTime][col];
-                    
-                    if (nextValue === currentValue) {
-                        mergeLength++;
-                    } else {
-                        break;
-                    }
+const mergeInfo = {};
+
+```
+columns.forEach(col => {
+    mergeInfo[col] = [];
+    let i = 0;
+   
+    while (i < relevantSlots.length) {
+        const currentTime = relevantSlots[i];
+        const currentValue = planningData[day][currentTime][col];
+       
+        if (currentValue && currentValue.trim() !== '') {
+            let mergeLength = 1;
+           
+            // Compter les créneaux consécutifs avec la même valeur
+            while (i + mergeLength < relevantSlots.length) {
+                const nextTime = relevantSlots[i + mergeLength];
+                const nextValue = planningData[day][nextTime][col];
+               
+                if (nextValue === currentValue) {
+                    mergeLength++;
+                } else {
+                    break;
                 }
-                
-                // Enregistrer les infos de fusion
-                for (let j = 0; j < mergeLength; j++) {
-                    mergeInfo[col][i + j] = {
-                        isFirst: j === 0,
-                        isLast: j === mergeLength - 1,
-                        mergeLength: mergeLength,
-                        value: currentValue,
-                        startRow: i,
-                        isMerged: mergeLength > 1
-                    };
-                }
-                
-                i += mergeLength;
-            } else {
-                mergeInfo[col][i] = {
-                    isFirst: true,
-                    isLast: true,
-                    mergeLength: 1,
-                    value: '',
-                    startRow: i,
-                    isMerged: false
-                };
-                i++;
             }
+           
+            // Enregistrer les infos de fusion
+            for (let j = 0; j < mergeLength; j++) {
+                mergeInfo[col][i + j] = {
+                    isFirst: j === 0,
+                    isLast: j === mergeLength - 1,
+                    mergeLength: mergeLength,
+                    value: currentValue,
+                    startRow: i,
+                    isMerged: mergeLength > 1
+                };
+            }
+           
+            i += mergeLength;
+        } else {
+            mergeInfo[col][i] = {
+                isFirst: true,
+                isLast: true,
+                mergeLength: 1,
+                value: '',
+                startRow: i,
+                isMerged: false
+            };
+            i++;
         }
-    });
-    
-    return mergeInfo;
+    }
+});
+
+return mergeInfo;
+```
+
 }
 
 function drawPlanningTableWithMerges(doc, day, relevantSlots, mergeInfo, startY, timeColWidth, dataColWidth, rowHeight, fontSize) {
-    let currentY = startY;
-    
-    // Dessiner l'en-tête
-    doc.setFillColor(102, 126, 234); // Couleur de fond bleu
-    doc.rect(20, currentY, timeColWidth, rowHeight, 'F');
-    
-    columns.forEach((col, index) => {
-        const x = 20 + timeColWidth + (index * dataColWidth);
-        doc.rect(x, currentY, dataColWidth, rowHeight, 'F');
-    });
+let currentY = startY;
 
-    // Texte de l'en-tête
-    doc.setTextColor(255, 255, 255); // Blanc
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(fontSize + 1);
-    
-    doc.text('Heure', 20 + timeColWidth/2, currentY + rowHeight/2 + 2, { align: 'center' });
-    
-    columns.forEach((col, index) => {
-        const x = 20 + timeColWidth + (index * dataColWidth);
-        doc.text(col, x + dataColWidth/2, currentY + rowHeight/2 + 2, { align: 'center' });
-    });
+```
+// Dessiner l'en-tête
+doc.setFillColor(102, 126, 234); // Couleur de fond bleu
+doc.rect(20, currentY, timeColWidth, rowHeight, 'F');
 
-    currentY += rowHeight;
+columns.forEach((col, index) => {
+    const x = 20 + timeColWidth + (index * dataColWidth);
+    doc.rect(x, currentY, dataColWidth, rowHeight, 'F');
+});
 
-    // Dessiner d'abord tous les arrière-plans des cellules fusionnées
-    relevantSlots.forEach((time, rowIndex) => {
-        columns.forEach((col, colIndex) => {
-            const merge = mergeInfo[col][rowIndex];
-            const x = 20 + timeColWidth + (colIndex * dataColWidth);
-            const y = startY + rowHeight + (rowIndex * rowHeight);
-            
-            if (merge && merge.value && merge.isFirst) {
-                // Appliquer la couleur de fond selon l'activité
-                const color = getActivityColorRGB(merge.value);
-                if (color) {
-                    const mergeHeight = rowHeight * merge.mergeLength;
-                    doc.setFillColor(color.r, color.g, color.b);
-                    doc.rect(x, y, dataColWidth, mergeHeight, 'F');
-                }
-            }
-        });
-    });
+// Texte de l'en-tête
+doc.setTextColor(255, 255, 255); // Blanc
+doc.setFont('helvetica', 'bold');
+doc.setFontSize(fontSize + 1);
 
-    // Dessiner les lignes de données
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(fontSize);
-    
-    relevantSlots.forEach((time, rowIndex) => {
+doc.text('Heure', 20 + timeColWidth/2, currentY + rowHeight/2 + 2, { align: 'center' });
+
+columns.forEach((col, index) => {
+    const x = 20 + timeColWidth + (index * dataColWidth);
+    doc.text(col, x + dataColWidth/2, currentY + rowHeight/2 + 2, { align: 'center' });
+});
+
+currentY += rowHeight;
+
+// Dessiner d'abord tous les arrière-plans des cellules fusionnées
+relevantSlots.forEach((time, rowIndex) => {
+    columns.forEach((col, colIndex) => {
+        const merge = mergeInfo[col][rowIndex];
+        const x = 20 + timeColWidth + (colIndex * dataColWidth);
         const y = startY + rowHeight + (rowIndex * rowHeight);
-        
-        // Fond alternant pour la lisibilité (seulement pour la colonne heure)
-        if (rowIndex % 2 === 0) {
-            doc.setFillColor(248, 249, 250);
-            doc.rect(20, y, timeColWidth, rowHeight, 'F');
-        }
-
-        // Colonne heure
-        doc.setTextColor(0, 0, 0);
-        doc.setFont('helvetica', 'bold');
-        doc.text(time, 20 + timeColWidth/2, y + rowHeight/2 + 2, { align: 'center' });
-
-        // Colonnes de données avec fusion
-        doc.setFont('helvetica', 'bold');
-        columns.forEach((col, colIndex) => {
-            const merge = mergeInfo[col][rowIndex];
-            const x = 20 + timeColWidth + (colIndex * dataColWidth);
-            
-            if (merge && merge.value) {
-                // Définir la couleur du texte
-                const color = getActivityColorRGB(merge.value);
-                if (color) {
-                    doc.setTextColor(255, 255, 255); // Texte blanc sur fond coloré
-                } else {
-                    doc.setTextColor(0, 0, 0); // Texte noir
-                }
-                
-                // Afficher le texte seulement sur la première cellule de la fusion
-                if (merge.isFirst) {
-                    const maxWidth = dataColWidth - 4;
-                    const truncatedText = truncateText(doc, merge.value, maxWidth, fontSize);
-                    const textY = y + (rowHeight * merge.mergeLength) / 2 + 2;
-                    doc.text(truncatedText, x + dataColWidth/2, textY, { align: 'center' });
-                }
+       
+        if (merge && merge.value && merge.isFirst) {
+            // Appliquer la couleur de fond selon l'activité
+            const color = getActivityColorRGB(merge.value);
+            if (color) {
+                const mergeHeight = rowHeight * merge.mergeLength;
+                doc.setFillColor(color.r, color.g, color.b);
+                doc.rect(x, y, dataColWidth, mergeHeight, 'F');
             }
-        });
+        }
     });
+});
 
-    // Dessiner les bordures du tableau
-    doc.setDrawColor(0, 0, 0);
-    doc.setLineWidth(0.5);
-    
-    // Bordures extérieures
-    const tableWidth = timeColWidth + (columns.length * dataColWidth);
-    const tableHeight = (relevantSlots.length + 1) * rowHeight;
-    doc.rect(20, startY, tableWidth, tableHeight);
-    
-    // Lignes verticales
-    doc.line(20 + timeColWidth, startY, 20 + timeColWidth, startY + tableHeight);
-    for (let i = 1; i < columns.length; i++) {
-        const x = 20 + timeColWidth + (i * dataColWidth);
-        doc.line(x, startY, x, startY + tableHeight);
+// Dessiner les lignes de données
+doc.setFont('helvetica', 'normal');
+doc.setFontSize(fontSize);
+
+relevantSlots.forEach((time, rowIndex) => {
+    const y = startY + rowHeight + (rowIndex * rowHeight);
+   
+    // Fond alternant pour la lisibilité (seulement pour la colonne heure)
+    if (rowIndex % 2 === 0) {
+        doc.setFillColor(248, 249, 250);
+        doc.rect(20, y, timeColWidth, rowHeight, 'F');
     }
-    
-    // Lignes horizontales
-    for (let i = 1; i <= relevantSlots.length; i++) {
-        const y = startY + (i * rowHeight);
-        
-        // Ligne complète pour séparer les en-têtes
-        if (i === 1) {
-            doc.line(20, y, 20 + tableWidth, y);
-        } else {
-            // Ligne pour la colonne heure
-            doc.line(20, y, 20 + timeColWidth, y);
-            
-            // Lignes pour chaque colonne de données (en évitant les zones fusionnées)
-            columns.forEach((col, colIndex) => {
-                const rowIndex = i - 2; // -1 pour l'en-tête, -1 pour l'index
-                if (rowIndex >= 0 && rowIndex < relevantSlots.length) {
-                    const merge = mergeInfo[col][rowIndex];
-                    const x = 20 + timeColWidth + (colIndex * dataColWidth);
-                    
-                    // Dessiner la ligne seulement si c'est la dernière cellule d'une fusion ou pas de fusion
-                    if (!merge || !merge.isMerged || merge.isLast) {
-                        doc.line(x, y, x + dataColWidth, y);
-                    }
-                } else if (i === relevantSlots.length + 1) {
-                    // Dernière ligne du tableau
-                    const x = 20 + timeColWidth + (colIndex * dataColWidth);
+
+    // Colonne heure
+    doc.setTextColor(0, 0, 0);
+    doc.setFont('helvetica', 'bold');
+    doc.text(time, 20 + timeColWidth/2, y + rowHeight/2 + 2, { align: 'center' });
+
+    // Colonnes de données avec fusion
+    doc.setFont('helvetica', 'bold');
+    columns.forEach((col, colIndex) => {
+        const merge = mergeInfo[col][rowIndex];
+        const x = 20 + timeColWidth + (colIndex * dataColWidth);
+       
+        if (merge && merge.value) {
+            // Définir la couleur du texte
+            const color = getActivityColorRGB(merge.value);
+            if (color) {
+                doc.setTextColor(255, 255, 255); // Texte blanc sur fond coloré
+            } else {
+                doc.setTextColor(0, 0, 0); // Texte noir
+            }
+           
+            // Afficher le texte seulement sur la première cellule de la fusion
+            if (merge.isFirst) {
+                const maxWidth = dataColWidth - 4;
+                const truncatedText = truncateText(doc, merge.value, maxWidth, fontSize);
+                const textY = y + (rowHeight * merge.mergeLength) / 2 + 2;
+                doc.text(truncatedText, x + dataColWidth/2, textY, { align: 'center' });
+            }
+        }
+    });
+});
+
+// Dessiner les bordures du tableau
+doc.setDrawColor(0, 0, 0);
+doc.setLineWidth(0.5);
+
+// Bordures extérieures
+const tableWidth = timeColWidth + (columns.length * dataColWidth);
+const tableHeight = (relevantSlots.length + 1) * rowHeight;
+doc.rect(20, startY, tableWidth, tableHeight);
+
+// Lignes verticales
+doc.line(20 + timeColWidth, startY, 20 + timeColWidth, startY + tableHeight);
+for (let i = 1; i < columns.length; i++) {
+    const x = 20 + timeColWidth + (i * dataColWidth);
+    doc.line(x, startY, x, startY + tableHeight);
+}
+
+// Lignes horizontales
+for (let i = 1; i <= relevantSlots.length; i++) {
+    const y = startY + (i * rowHeight);
+   
+    // Ligne complète pour séparer les en-têtes
+    if (i === 1) {
+        doc.line(20, y, 20 + tableWidth, y);
+    } else {
+        // Ligne pour la colonne heure
+        doc.line(20, y, 20 + timeColWidth, y);
+       
+        // Lignes pour chaque colonne de données (en évitant les zones fusionnées)
+        columns.forEach((col, colIndex) => {
+            const rowIndex = i - 2; // -1 pour l'en-tête, -1 pour l'index
+            if (rowIndex >= 0 && rowIndex < relevantSlots.length) {
+                const merge = mergeInfo[col][rowIndex];
+                const x = 20 + timeColWidth + (colIndex * dataColWidth);
+               
+                // Dessiner la ligne seulement si c'est la dernière cellule d'une fusion ou pas de fusion
+                if (!merge || !merge.isMerged || merge.isLast) {
                     doc.line(x, y, x + dataColWidth, y);
                 }
-            });
-        }
+            } else if (i === relevantSlots.length + 1) {
+                // Dernière ligne du tableau
+                const x = 20 + timeColWidth + (colIndex * dataColWidth);
+                doc.line(x, y, x + dataColWidth, y);
+            }
+        });
     }
+}
+```
+
 }
 
 // Gardez les autres fonctions inchangées
 function getActivityColorRGB(value) {
-    const hex = getActivityColor(value);
-    if (!hex) return null;
-    
-    return {
-        r: parseInt(hex.substr(1, 2), 16),
-        g: parseInt(hex.substr(3, 2), 16),
-        b: parseInt(hex.substr(5, 2), 16)
-    };
+const hex = getActivityColor(value);
+if (!hex) return null;
+
+```
+return {
+    r: parseInt(hex.substr(1, 2), 16),
+    g: parseInt(hex.substr(3, 2), 16),
+    b: parseInt(hex.substr(5, 2), 16)
+};
+```
+
 }
 
 function truncateText(doc, text, maxWidth, fontSize) {
-    doc.setFontSize(fontSize);
-    const textWidth = doc.getTextWidth(text);
-    
-    if (textWidth <= maxWidth) {
-        return text;
-    }
-    
-    // Couper le texte et ajouter "..."
-    let truncated = text;
-    while (doc.getTextWidth(truncated + "...") > maxWidth && truncated.length > 0) {
-        truncated = truncated.slice(0, -1);
-    }
-    
-    return truncated + "...";
+doc.setFontSize(fontSize);
+const textWidth = doc.getTextWidth(text);
+
+```
+if (textWidth <= maxWidth) {
+    return text;
+}
+
+// Couper le texte et ajouter "..."
+let truncated = text;
+while (doc.getTextWidth(truncated + "...") > maxWidth && truncated.length > 0) {
+    truncated = truncated.slice(0, -1);
+}
+
+return truncated + "...";
+```
+
 }
 
 function getActivityColor(value) {
-    if (!value) return null;
-    let key = value.toLowerCase()
-        .replace(/\s+/g, '-')
-        .replace('renfort-surveillance', 'renfort')
-        .replace('réfectoire', 'refectoire');
-    const activityColors = {
-        'bvs1': '#e91e63',
-        'bvs2': '#ff9800',
-        'portail': '#ff5722',
-        'voltige': '#2196f3',
-        'renfort': '#795548',
-        'cours-impaire': '#4caf50',
-        'cours-paire': '#8bc34a',
-        'etude-impaire': '#9c27b0',
-        'etude-paire': '#673ab7',
-        'ap': '#009688',
-        'hall': '#607d8b',
-        'refectoire': '#ff6f00',
-        'turbo': '#f44336',
-        'bureau-midi': '#3f51b5',
-        'pause': '#9e9e9e',
-        'marsons': '#00bcd4'
-    };
-    return activityColors[key] || null;
+if (!value) return null;
+let key = value.toLowerCase()
+.replace(/\s+/g, ‘-’)
+.replace(‘renfort-surveillance’, ‘renfort’)
+.replace(‘réfectoire’, ‘refectoire’);
+const activityColors = {
+‘bvs1’: ‘#e91e63’,
+‘bvs2’: ‘#ff9800’,
+‘portail’: ‘#ff5722’,
+‘voltige’: ‘#2196f3’,
+‘renfort’: ‘#795548’,
+‘cours-impaire’: ‘#4caf50’,
+‘cours-paire’: ‘#8bc34a’,
+‘etude-impaire’: ‘#9c27b0’,
+‘etude-paire’: ‘#673ab7’,
+‘ap’: ‘#009688’,
+‘hall’: ‘#607d8b’,
+‘refectoire’: ‘#ff6f00’,
+‘turbo’: ‘#f44336’,
+‘bureau-midi’: ‘#3f51b5’,
+‘pause’: ‘#9e9e9e’,
+‘marsons’: ‘#00bcd4’
+};
+return activityColors[key] || null;
 }
     </script>
 </body>
