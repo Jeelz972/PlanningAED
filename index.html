@@ -1545,9 +1545,11 @@ function drawTableBorders(doc, startY, timeColWidth, dataColWidth, rowHeight, to
         doc.line(x, startY, x, startY + tableHeight);
     }
     
-    // Ligne horizontale uniquement pour séparer l'en-tête des données
-    const headerSeparatorY = startY + rowHeight;
-    doc.line(20, headerSeparatorY, 20 + tableWidth, headerSeparatorY);
+    // Lignes horizontales
+    for (let i = 1; i < totalRows; i++) {
+        const y = startY + (i * rowHeight);
+        doc.line(20, y, 20 + tableWidth, y);
+    }
 }
 
 function drawOptimizedPlanningWithPagination(doc, day, relevantSlots, mergeInfo, startY, timeColWidth, dataColWidth, rowHeight, fontSize, availableHeight, pageWidth, pageHeight) {
@@ -1687,8 +1689,8 @@ function getCouleurPourPersonne(personne) {
     const couleursPersonnes = {
         'a': "#FF5733", // Rouge
         'b': "#33C1FF", // Bleu
-        'c': "#75FF33", // Vert
-        'd': "#F7FF33", // Jaune
+        'c': "#008000", // Vert
+        'd': "#d58490", // Marron
         'e': "#FF33A8", // Rose
         'f': "#33FFB2", // Turquoise
         'g': "#A833FF"  // Violet
