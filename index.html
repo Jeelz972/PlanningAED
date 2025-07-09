@@ -1347,7 +1347,7 @@ doc.save('planning_hebdomadaire.pdf');
 }
 
 
-function drawPlanningTableWithPagination(doc, day, relevantSlots, mergeInfo, startY, timeColWidth, dataColWidth, rowHeight, fontSize, availableHeight, pageWidth, pageHeight) {
+function drawOptimizedPlanningWithPagination (doc, day, relevantSlots, mergeInfo, startY, timeColWidth, dataColWidth, rowHeight, fontSize, availableHeight, pageWidth, pageHeight) {
     const headerHeight = rowHeight;
     const maxRowsPerPage = Math.floor((availableHeight - headerHeight) / rowHeight);
     
