@@ -1533,6 +1533,96 @@ function drawTableBorders(doc, startY, timeColWidth, dataColWidth, scheduleData,
     doc.setLineWidth(0.5);
     
     const totalCols = 7; // A, B, C, D, E, F, G
+    const tableWidth = timeColWidth + (totalCols * dataColWidth);
+    
+    // Vérification de la structure des données
+    if (!scheduleData || scheduleData.length === 0) {
+        console.error("scheduleData est vide ou undefined");
+        return;
+    }
+    
+    // Bordure extérieure gauche et droite
+    const tableHeight = scheduleData.length * rowHeight;
+    doc.line(20, startY, 20, startY + tableHeight); // Gauche
+    doc.line(20 + tableWidth, startY, 20 + tableWidth, startY + tableHeight); // Droite
+    
+    // Lignes verticales pour séparer les colonnes
+    doc.line(20 + timeColWidth, startY, 20 + timeColWidth, startY + tableHeight); // Séparation horaire/données
+    for (let i = 1; i < totalCols; i++) {
+        const x = 20 + timeColWidth + (i * dataColWidth);
+        doc.line(x, startY, x, startY + tableHeight);
+    }
+    
+    // Fonction pour extraire les activités selon la structure des données
+    function getActivities(row) {
+        if (!row) return [];
+        
+        // Si la structure est row.activities
+        if (row.activities && Array.isArray(row.activities)) {
+            return row.activities;
+        }
+        
+        // Si la structure est directement un tableau
+        if (Array.isArray(row)) {
+            return row.slice(1); // Exclure la première colonne (horaire)
+        }
+        
+        // Si la structure est un objet avec des propriétés A, B, C, D, E, F, G
+        if (typeof row === 'object') {
+            return ['A', 'B', 'C', 'D', 'E', 'F', 'G'].map(col => row[col] || '');
+        }
+        
+        return [];
+    }
+    
+    // Lignes horizontales pour entourer chaque activité
+    let currentY = startY;
+    
+    for (let i = 0; i < scheduleData.length; i++) {
+        const row = scheduleData[i];
+        
+        // Ligne du haut de la première ligne
+        if (i === 0) {
+            doc.line(20, currentY, 20 + tableWidth, currentY);
+        }
+        
+        // Vérifier si la ligne suivante est différente pour chaque colonne
+        const nextRow = scheduleData[i + 1];
+        let shouldDrawLine = false;
+        
+        if (i === scheduleData.length - 1) {
+            // Dernière ligne : toujours dessiner
+            shouldDrawLine = true;
+        } else if (nextRow) {
+            // Comparer avec la ligne suivante pour chaque colonne
+            const currentActivities = getActivities(row);
+            const nextActivities = getActivities(nextRow);
+            
+            for (let col = 0; col < totalCols; col++) {
+                const currentActivity = currentActivities[col] || '';
+                const nextActivity = nextActivities[col] || '';
+                
+                if (currentActivity !== nextActivity) {
+                    shouldDrawLine = true;
+                    break;
+                }
+            }
+        }
+        
+        currentY += rowHeight;
+        
+        if (shouldDrawLine) {
+            doc.line(20, currentY, 20 + tableWidth, currentY);
+        }
+    }
+}
+
+// Version alternative plus précise qui dessine des rectangles pour chaque activité
+function drawActivityBorders(doc, startY, timeColWidth, dataColWidth, scheduleData, rowHeight) {
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.5);
+    
+    const totalCols = 7; // A, B, C, D, E, F, G
     
     // Grouper les activités consécutives identiques
     for (let col = 0; col < totalCols; col++) {
