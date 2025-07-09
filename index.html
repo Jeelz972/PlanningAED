@@ -1528,30 +1528,43 @@ function addMinutesToTime(timeStr, minutesToAdd) {
     return `${h}:${m}`;
 }
 
-function drawTableBorders(doc, startY, timeColWidth, dataColWidth, rowHeight, totalRows, totalCols) {
+function drawTableBorders(doc, startY, timeColWidth, dataColWidth, scheduleData, rowHeight) {
     doc.setDrawColor(0, 0, 0);
     doc.setLineWidth(0.5);
     
-    const tableWidth = timeColWidth + (totalCols * dataColWidth);
-    const tableHeight = totalRows * rowHeight;
+    const totalCols = 7; // A, B, C, D, E, F, G
     
-    // Bordures extérieures
-    doc.rect(20, startY, tableWidth, tableHeight);
-    
-    // Lignes verticales
-    doc.line(20 + timeColWidth, startY, 20 + timeColWidth, startY + tableHeight);
-    for (let i = 1; i < totalCols; i++) {
-        const x = 20 + timeColWidth + (i * dataColWidth);
-        doc.line(x, startY, x, startY + tableHeight);
+    // Grouper les activités consécutives identiques
+    for (let col = 0; col < totalCols; col++) {
+        let activityStart = 0;
+        let currentActivity = scheduleData[0].activities[col] || '';
+        
+        for (let row = 1; row <= scheduleData.length; row++) {
+            const nextActivity = row < scheduleData.length ? (scheduleData[row].activities[col] || '') : '';
+            
+            // Si l'activité change ou si on est à la fin
+            if (nextActivity !== currentActivity || row === scheduleData.length) {
+                // Dessiner le rectangle pour cette activité
+                const x = 20 + timeColWidth + (col * dataColWidth);
+                const y = startY + (activityStart * rowHeight);
+                const width = dataColWidth;
+                const height = (row - activityStart) * rowHeight;
+                
+                if (currentActivity.trim() !== '') {
+                    doc.rect(x, y, width, height);
+                }
+                
+                // Préparer pour la prochaine activité
+                activityStart = row;
+                currentActivity = nextActivity;
+            }
+        }
     }
     
-    // Lignes horizontales
-    for (let i = 1; i < totalRows; i++) {
-        const y = startY + (i * rowHeight);
-        doc.line(20, y, 20 + tableWidth, y);
-    }
+    // Dessiner les bordures de la colonne horaire
+    const timeColHeight = scheduleData.length * rowHeight;
+    doc.rect(20, startY, timeColWidth, timeColHeight);
 }
-
 function drawOptimizedPlanningWithPagination(doc, day, relevantSlots, mergeInfo, startY, timeColWidth, dataColWidth, rowHeight, fontSize, availableHeight, pageWidth, pageHeight) {
     const headerHeight = rowHeight;
     const totalSlots = relevantSlots.length;
