@@ -1224,129 +1224,223 @@ function colorerSyntheseParItem() {
     });
 }
 function generatePDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('l', 'pt', 'a4');
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
 
-const { jsPDF } = window.jspdf;
+    let isFirstPage = true;
 
-const doc = new jsPDF('l', 'pt', 'a4'); // Format paysage
+    days.forEach((day, dayIndex) => {
+        if (!isFirstPage) {
+            doc.addPage();
+        }
+        isFirstPage = false;
 
-const pageWidth = doc.internal.pageSize.getWidth(); // ~842pt
+        // Titre du jour
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.text(day.charAt(0).toUpperCase() + day.slice(1), pageWidth / 2, 30, { align: "center" });
 
-const pageHeight = doc.internal.pageSize.getHeight(); // ~595pt
+        // Créer les créneaux optimisés
+        const { optimizedSlots, workingColumns } = createOptimizedTimeSlots(day, timeSlots);
 
+        if (optimizedSlots.length === 0) {
+            doc.setFontSize(12);
+            doc.setFont('helvetica', 'normal');
+            doc.text("Aucune activité pour ce jour", pageWidth / 2, pageHeight / 2, { align: "center" });
+            return;
+        }
 
+        // Analyser les fusions pour les colonnes qui travaillent
+        const mergeInfo = analyzeOptimizedMerges(day, optimizedSlots, workingColumns);
 
-let isFirstPage = true;
+        // Calcul des dimensions
+        const startY = 50;
+        const availableHeight = pageHeight - startY - 20;
+        const availableWidth = pageWidth - 40;
 
+        const totalRows = optimizedSlots.length + 1;
+        const minRowHeight = 12;
+        const rowHeight = Math.max(minRowHeight, Math.floor(availableHeight / totalRows));
+        const fontSize = Math.max(6, Math.min(10, rowHeight - 2));
 
-days.forEach((day, dayIndex) => {
+        const timeColWidth = 80; // Augmenté pour les plages compressées
+        const dataColWidth = (availableWidth - timeColWidth) / workingColumns.length;
 
-// Ajouter une nouvelle page sauf pour le premier jour
+        const totalTableHeight = totalRows * rowHeight;
 
-if (!isFirstPage) {
+        if (totalTableHeight > availableHeight) {
+            drawOptimizedPlanningWithPagination(doc, day, optimizedSlots, workingColumns, mergeInfo, startY, timeColWidth, dataColWidth, minRowHeight, fontSize, availableHeight, pageWidth, pageHeight);
+        } else {
+            drawOptimizedPlanningTable(doc, day, optimizedSlots, workingColumns, mergeInfo, startY, timeColWidth, dataColWidth, rowHeight, fontSize);
+        }
+    });
 
-doc.addPage();
-
+    doc.save('planning_hebdomadaire_optimise.pdf');
 }
+        function analyzeOptimizedMerges(day, optimizedSlots, workingColumns) {
+    const mergeInfo = {};
+    
+    workingColumns.forEach(col => {
+        mergeInfo[col] = [];
+        let i = 0;
 
-isFirstPage = false;
+        while (i < optimizedSlots.length) {
+            const currentSlot = optimizedSlots[i];
+            let currentValue;
+            
+            if (currentSlot.isCompressed) {
+                // Pour les créneaux compressés, utiliser l'activité de la plage
+                currentValue = currentSlot.compressedRange.activities[col] || '';
+            } else {
+                // Pour les créneaux normaux
+                const time = currentSlot.time;
+                currentValue = planningData[day][time] && planningData[day][time][col] || '';
+            }
 
+            if (currentValue.trim() !== '') {
+                let mergeLength = 1;
 
-// Titre du jour
+                // Compter les créneaux consécutifs avec la même valeur
+                while (i + mergeLength < optimizedSlots.length) {
+                    const nextSlot = optimizedSlots[i + mergeLength];
+                    let nextValue;
+                    
+                    if (nextSlot.isCompressed) {
+                        nextValue = nextSlot.compressedRange.activities[col] || '';
+                    } else {
+                        const nextTime = nextSlot.time;
+                        nextValue = planningData[day][nextTime] && planningData[day][nextTime][col] || '';
+                    }
 
-doc.setFontSize(16);
+                    if (nextValue === currentValue) {
+                        mergeLength++;
+                    } else {
+                        break;
+                    }
+                }
 
-doc.setFont('helvetica', 'bold');
+                // Enregistrer les infos de fusion
+                for (let j = 0; j < mergeLength; j++) {
+                    mergeInfo[col][i + j] = {
+                        isFirst: j === 0,
+                        isLast: j === mergeLength - 1,
+                        mergeLength: mergeLength,
+                        value: currentValue,
+                        startRow: i,
+                        isMerged: mergeLength > 1
+                    };
+                }
 
-doc.text(day.charAt(0).toUpperCase() + day.slice(1), pageWidth / 2, 30, { align: "center" });
+                i += mergeLength;
+            } else {
+                mergeInfo[col][i] = {
+                    isFirst: true,
+                    isLast: true,
+                    mergeLength: 1,
+                    value: '',
+                    startRow: i,
+                    isMerged: false
+                };
+                i++;
+            }
+        }
+    });
 
-
-// Filtrer les créneaux qui ont au moins une donnée
-
-const relevantSlots = timeSlots.filter(time => {
-
-return columns.some(col => {
-
-const value = planningData[day][time][col];
-
-return value && value.trim() !== '';
-
-});
-
-});
-
-
-if (relevantSlots.length === 0) {
-
-doc.setFontSize(12);
-
-doc.setFont('helvetica', 'normal');
-
-doc.text("Aucune donnée pour ce jour", pageWidth / 2, pageHeight / 2, { align: "center" });
-
-return;
-
+    return mergeInfo;
 }
+        function drawOptimizedPlanningTable(doc, day, optimizedSlots, workingColumns, mergeInfo, startY, timeColWidth, dataColWidth, rowHeight, fontSize) {
+    let currentY = startY;
 
+    // Dessiner l'en-tête
+    doc.setFillColor(102, 126, 234);
+    doc.rect(20, currentY, timeColWidth, rowHeight, 'F');
 
-// Analyser les fusions pour chaque colonne
+    workingColumns.forEach((col, index) => {
+        const x = 20 + timeColWidth + (index * dataColWidth);
+        doc.rect(x, currentY, dataColWidth, rowHeight, 'F');
+    });
 
-const mergeInfo = analyzeMerges(day, relevantSlots);
+    // Texte de l'en-tête
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(fontSize + 1);
 
+    doc.text('Heure', 20 + timeColWidth/2, currentY + rowHeight/2 + 2, { align: 'center' });
 
-// Calcul des dimensions pour que tout tienne sur une page
+    workingColumns.forEach((col, index) => {
+        const x = 20 + timeColWidth + (index * dataColWidth);
+        doc.text(col, x + dataColWidth/2, currentY + rowHeight/2 + 2, { align: 'center' });
+    });
 
-const startY = 50;
+    currentY += rowHeight;
 
-const availableHeight = pageHeight - startY - 20; // 20pt de marge en bas
+    // Dessiner les arrière-plans des cellules fusionnées
+    optimizedSlots.forEach((slot, rowIndex) => {
+        workingColumns.forEach((col, colIndex) => {
+            const merge = mergeInfo[col][rowIndex];
+            const x = 20 + timeColWidth + (colIndex * dataColWidth);
+            const y = startY + rowHeight + (rowIndex * rowHeight);
 
-const availableWidth = pageWidth - 40; // 20pt de marge de chaque côté
+            if (merge && merge.value && merge.isFirst) {
+                const color = getActivityColorRGB(merge.value);
+                if (color) {
+                    const mergeHeight = rowHeight * merge.mergeLength;
+                    doc.setFillColor(color.r, color.g, color.b);
+                    doc.rect(x, y, dataColWidth, mergeHeight, 'F');
+                }
+            }
+        });
+    });
 
+    // Dessiner les lignes de données
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(fontSize);
 
-// Calcul automatique des tailles
+    optimizedSlots.forEach((slot, rowIndex) => {
+        const y = startY + rowHeight + (rowIndex * rowHeight);
 
-const totalRows = relevantSlots.length + 1; // +1 pour l'en-tête
+        // Fond alternant pour la colonne heure
+        if (rowIndex % 2 === 0) {
+            doc.setFillColor(248, 249, 250);
+            doc.rect(20, y, timeColWidth, rowHeight, 'F');
+        }
 
-const minRowHeight = 12; // Hauteur minimale réduite pour plus de flexibilité
+        // Colonne heure
+        doc.setTextColor(0, 0, 0);
+        doc.setFont('helvetica', slot.isCompressed ? 'italic' : 'bold');
+        
+        const timeText = slot.isCompressed ? slot.time : slot.time;
+        const maxTimeWidth = timeColWidth - 4;
+        const truncatedTimeText = truncateText(doc, timeText, maxTimeWidth, fontSize);
+        doc.text(truncatedTimeText, 20 + timeColWidth/2, y + rowHeight/2 + 2, { align: 'center' });
 
-const rowHeight = Math.max(minRowHeight, Math.floor(availableHeight / totalRows));
+        // Colonnes de données
+        doc.setFont('helvetica', 'bold');
+        workingColumns.forEach((col, colIndex) => {
+            const merge = mergeInfo[col][rowIndex];
+            const x = 20 + timeColWidth + (colIndex * dataColWidth);
 
-const fontSize = Math.max(6, Math.min(10, rowHeight - 2));
+            if (merge && merge.value && merge.isFirst) {
+                const color = getActivityColorRGB(merge.value);
+                if (color) {
+                    doc.setTextColor(255, 255, 255);
+                } else {
+                    doc.setTextColor(0, 0, 0);
+                }
 
+                const maxWidth = dataColWidth - 4;
+                const truncatedText = truncateText(doc, merge.value, maxWidth, fontSize);
+                const textY = y + (rowHeight * merge.mergeLength) / 2 + 2;
+                doc.text(truncatedText, x + dataColWidth/2, textY, { align: 'center' });
+            }
+        });
+    });
 
-// Largeurs des colonnes
-
-const timeColWidth = 60;
-
-const dataColWidth = (availableWidth - timeColWidth) / columns.length;
-
-
-// Vérifier si le contenu peut tenir sur une page
-
-const totalTableHeight = totalRows * rowHeight;
-
-
-if (totalTableHeight > availableHeight) {
-
-// Le contenu est trop grand, diviser en plusieurs pages
-
-drawPlanningTableWithPagination(doc, day, relevantSlots, mergeInfo, startY, timeColWidth, dataColWidth, minRowHeight, fontSize, availableHeight, pageWidth, pageHeight);
-
-} else {
-
-// Le contenu peut tenir sur une page
-
-drawPlanningTableWithMerges(doc, day, relevantSlots, mergeInfo, startY, timeColWidth, dataColWidth, rowHeight, fontSize);
-
+    // Dessiner les bordures
+    drawTableBorders(doc, startY, timeColWidth, dataColWidth, rowHeight, optimizedSlots.length, workingColumns.length, mergeInfo);
 }
-
-});
-
-
-doc.save('planning_hebdomadaire.pdf');
-
-}
-
-
 function drawPlanningTableWithPagination(doc, day, relevantSlots, mergeInfo, startY, timeColWidth, dataColWidth, rowHeight, fontSize, availableHeight, pageWidth, pageHeight) {
     const headerHeight = rowHeight;
     const maxRowsPerPage = Math.floor((availableHeight - headerHeight) / rowHeight);
@@ -1897,6 +1991,242 @@ const activityColors = {
 
 return activityColors[key] || null;
 
+}
+
+        function analyzeActivityRanges(day, timeSlots) {
+    const activityRanges = {};
+    
+    // Pour chaque colonne, trouver les plages d'activités
+    columns.forEach(col => {
+        activityRanges[col] = [];
+        let currentRange = null;
+        
+        timeSlots.forEach((time, index) => {
+            const value = planningData[day][time] && planningData[day][time][col];
+            const hasActivity = value && value.trim() !== '';
+            
+            if (hasActivity) {
+                if (!currentRange) {
+                    // Début d'une nouvelle plage
+                    currentRange = {
+                        start: index,
+                        end: index,
+                        startTime: time,
+                        endTime: time,
+                        activity: value
+                    };
+                } else if (currentRange.activity === value) {
+                    // Extension de la plage actuelle
+                    currentRange.end = index;
+                    currentRange.endTime = time;
+                } else {
+                    // Fin de la plage actuelle, début d'une nouvelle
+                    activityRanges[col].push(currentRange);
+                    currentRange = {
+                        start: index,
+                        end: index,
+                        startTime: time,
+                        endTime: time,
+                        activity: value
+                    };
+                }
+            } else {
+                // Pas d'activité, fermer la plage actuelle si elle existe
+                if (currentRange) {
+                    activityRanges[col].push(currentRange);
+                    currentRange = null;
+                }
+            }
+        });
+        
+        // Fermer la dernière plage si elle existe
+        if (currentRange) {
+            activityRanges[col].push(currentRange);
+        }
+    });
+    
+    return activityRanges;
+}
+
+        function createOptimizedTimeSlots(day, timeSlots) {
+    const activityRanges = analyzeActivityRanges(day, timeSlots);
+    
+    // Identifier les personnes qui travaillent ce jour
+    const workingColumns = columns.filter(col => {
+        return activityRanges[col].length > 0;
+    });
+    
+    if (workingColumns.length === 0) {
+        return { optimizedSlots: [], workingColumns: [] };
+    }
+    
+    // Trouver les plages communes (même début et fin pour plusieurs colonnes)
+    const commonRanges = findCommonRanges(activityRanges, workingColumns);
+    
+    // Créer les créneaux optimisés
+    const optimizedSlots = [];
+    const usedIndices = new Set();
+    
+    commonRanges.forEach(range => {
+        const startIndex = range.start;
+        const endIndex = range.end;
+        const rangeLength = endIndex - startIndex + 1;
+        
+        if (rangeLength > 6) { // Si la plage fait plus de 6 créneaux (30 minutes)
+            // Garder le début (3 créneaux)
+            for (let i = 0; i < 3; i++) {
+                if (startIndex + i < timeSlots.length) {
+                    optimizedSlots.push({
+                        time: timeSlots[startIndex + i],
+                        index: startIndex + i,
+                        isCompressed: false
+                    });
+                    usedIndices.add(startIndex + i);
+                }
+            }
+            
+            // Ajouter un créneau compressé au milieu
+            if (rangeLength > 6) {
+                const middleIndex = Math.floor((startIndex + endIndex) / 2);
+                optimizedSlots.push({
+                    time: `${timeSlots[startIndex + 2]} - ${timeSlots[endIndex - 2]}`,
+                    index: middleIndex,
+                    isCompressed: true,
+                    compressedRange: {
+                        start: startIndex + 3,
+                        end: endIndex - 3,
+                        activities: range.activities
+                    }
+                });
+            }
+            
+            // Garder la fin (3 créneaux)
+            for (let i = Math.max(0, 3); i >= 1; i--) {
+                if (endIndex - i + 1 < timeSlots.length) {
+                    optimizedSlots.push({
+                        time: timeSlots[endIndex - i + 1],
+                        index: endIndex - i + 1,
+                        isCompressed: false
+                    });
+                    usedIndices.add(endIndex - i + 1);
+                }
+            }
+        } else {
+            // Garder tous les créneaux si la plage est courte
+            for (let i = startIndex; i <= endIndex; i++) {
+                if (i < timeSlots.length) {
+                    optimizedSlots.push({
+                        time: timeSlots[i],
+                        index: i,
+                        isCompressed: false
+                    });
+                    usedIndices.add(i);
+                }
+            }
+        }
+    });
+    
+    // Ajouter les créneaux non couverts par les plages communes
+    timeSlots.forEach((time, index) => {
+        if (!usedIndices.has(index)) {
+            // Vérifier si ce créneau a des activités
+            const hasActivity = workingColumns.some(col => {
+                const value = planningData[day][time] && planningData[day][time][col];
+                return value && value.trim() !== '';
+            });
+            
+            if (hasActivity) {
+                optimizedSlots.push({
+                    time: time,
+                    index: index,
+                    isCompressed: false
+                });
+            }
+        }
+    });
+    
+    // Trier par index
+    optimizedSlots.sort((a, b) => a.index - b.index);
+    
+    return { optimizedSlots, workingColumns };
+}
+        function findCommonRanges(activityRanges, workingColumns) {
+    const ranges = [];
+    
+    // Collecter toutes les plages de tous les colonnes
+    const allRanges = [];
+    workingColumns.forEach(col => {
+        activityRanges[col].forEach(range => {
+            allRanges.push({
+                ...range,
+                column: col
+            });
+        });
+    });
+    
+    // Grouper par début et fin identiques
+    const groupedRanges = {};
+    allRanges.forEach(range => {
+        const key = `${range.start}-${range.end}`;
+        if (!groupedRanges[key]) {
+            groupedRanges[key] = {
+                start: range.start,
+                end: range.end,
+                activities: {},
+                columns: []
+            };
+        }
+        groupedRanges[key].activities[range.column] = range.activity;
+        groupedRanges[key].columns.push(range.column);
+    });
+    
+    // Convertir en tableau et filtrer les plages avec plusieurs colonnes
+    Object.values(groupedRanges).forEach(group => {
+        if (group.columns.length >= 2) { // Au moins 2 colonnes avec la même plage
+            ranges.push(group);
+        }
+    });
+    
+    return ranges;
+}
+        function findCommonRanges(activityRanges, workingColumns) {
+    const ranges = [];
+    
+    // Collecter toutes les plages de tous les colonnes
+    const allRanges = [];
+    workingColumns.forEach(col => {
+        activityRanges[col].forEach(range => {
+            allRanges.push({
+                ...range,
+                column: col
+            });
+        });
+    });
+    
+    // Grouper par début et fin identiques
+    const groupedRanges = {};
+    allRanges.forEach(range => {
+        const key = `${range.start}-${range.end}`;
+        if (!groupedRanges[key]) {
+            groupedRanges[key] = {
+                start: range.start,
+                end: range.end,
+                activities: {},
+                columns: []
+            };
+        }
+        groupedRanges[key].activities[range.column] = range.activity;
+        groupedRanges[key].columns.push(range.column);
+    });
+    
+    // Convertir en tableau et filtrer les plages avec plusieurs colonnes
+    Object.values(groupedRanges).forEach(group => {
+        if (group.columns.length >= 2) { // Au moins 2 colonnes avec la même plage
+            ranges.push(group);
+        }
+    });
+    
+    return ranges;
 }
     </script>
 </body>
