@@ -1230,7 +1230,7 @@ function setColorMode(mode) {
 }
 
 // Fonction principale de génération PDF avec choix de mode
-function generatePDF(selectedColorMode = 'activity') {
+function generatePDF(selectedColorMode = 'person') {
     colorMode = selectedColorMode;
     
     const { jsPDF } = window.jspdf;
@@ -1535,18 +1535,19 @@ function drawTableBorders(doc, startY, timeColWidth, dataColWidth, rowHeight, to
     const tableWidth = timeColWidth + (totalCols * dataColWidth);
     const tableHeight = totalRows * rowHeight;
     
+    // Bordures extérieures
     doc.rect(20, startY, tableWidth, tableHeight);
     
+    // Lignes verticales
     doc.line(20 + timeColWidth, startY, 20 + timeColWidth, startY + tableHeight);
     for (let i = 1; i < totalCols; i++) {
         const x = 20 + timeColWidth + (i * dataColWidth);
         doc.line(x, startY, x, startY + tableHeight);
     }
     
-    for (let i = 1; i < totalRows; i++) {
-        const y = startY + (i * rowHeight);
-        doc.line(20, y, 20 + tableWidth, y);
-    }
+    // Ligne horizontale uniquement pour séparer l'en-tête des données
+    const headerSeparatorY = startY + rowHeight;
+    doc.line(20, headerSeparatorY, 20 + tableWidth, headerSeparatorY);
 }
 
 function drawOptimizedPlanningWithPagination(doc, day, relevantSlots, mergeInfo, startY, timeColWidth, dataColWidth, rowHeight, fontSize, availableHeight, pageWidth, pageHeight) {
