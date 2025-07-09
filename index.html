@@ -1476,7 +1476,15 @@ function drawPlanningTableWithMerges(doc, day, compressedSlots, mergeInfo, start
         // Colonne horaire avec plage compressée
         doc.setTextColor(0, 0, 0);
         doc.setFont('helvetica', 'bold');
-        const timeText = slot.displayLabel;
+        let timeText = slot.displayLabel;
+        // Supposons que displayLabel soit du genre "08:00 - 10:00"
+        const timeMatch = timeText.match(/^(\d{2}:\d{2})\s*-\s*(\d{2}:\d{2})$/);
+        if (timeMatch) {
+            const start = timeMatch[1];
+            const end = timeMatch[2];
+            const newEnd = addMinutesToTime(end, 5);
+            timeText = `${start} - ${newEnd}`;
+        }
         const truncatedTime = truncateText(doc, timeText, timeColWidth - 4, fontSize);
         doc.text(truncatedTime, 20 + timeColWidth/2, y + rowHeight/2 + 2, { align: 'center' });
         
@@ -1505,7 +1513,14 @@ function drawPlanningTableWithMerges(doc, day, compressedSlots, mergeInfo, start
     // Dessiner les bordures
     drawTableBorders(doc, startY, timeColWidth, dataColWidth, rowHeight, compressedSlots.length + 1, columns.length);
 }
-
+function addMinutesToTime(timeStr, minutesToAdd) {
+    // timeStr doit être au format "HH:MM"
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    const date = new Date(0, 0, 0, hours, minutes + minutesToAdd, 0);
+    const h = String(date.getHours()).padStart(2, '0');
+    const m = String(date.getMinutes()).padStart(2, '0');
+    return `${h}:${m}`;
+}
 // Fonction pour dessiner les bordures du tableau
 function drawTableBorders(doc, startY, timeColWidth, dataColWidth, rowHeight, totalRows, totalCols) {
     doc.setDrawColor(0, 0, 0);
@@ -1971,7 +1986,7 @@ doc.line(x, y, x + dataColWidth, y);
 
 function getActivityColorRGB(value) {
 
-const hex = getActivityColor(value);
+//const hex = getActivityColor(value);
 
 if (!hex) return null;
 
@@ -2079,6 +2094,21 @@ const activityColors = {
 
 return activityColors[key] || null;
 
+}
+        // Exemple d'association personne → couleur
+const couleursPersonnes = {
+  a: "#FF5733", // Rouge
+  b: "#33C1FF", // Bleu
+  c: "#75FF33", // Vert
+  d: "#F7FF33", // Jaune
+  e: "#A833FF", // Violet
+  f: "#FF33A8", // Rose
+  g: "#33FFB2"  // Turquoise
+};
+
+// Quand tu crées l'événement ou la case pour la personne :
+function getCouleurPourPersonne(personne) {
+  return couleursPersonnes[personne] || "#CCCCCC"; // Gris si personne inconnue
 }
     </script>
 </body>
