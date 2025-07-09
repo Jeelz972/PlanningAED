@@ -1822,12 +1822,12 @@ doc.rect(20, y, timeColWidth, rowHeight, 'F');
 
 
 // Colonne heure
-
-doc.setTextColor(0, 0, 0);
-
-doc.setFont('helvetica', 'bold');
-
-doc.text(String(time.value), 20 + timeColWidth/2, y + rowHeight/2 + 2, { align: 'center' });
+        doc.setTextColor(0, 0, 0);
+        doc.setFont('helvetica', 'bold');
+        
+        // Vérifier si time est un objet avec displayLabel (créneaux compressés) ou une string simple
+        const timeDisplay = typeof time === 'object' && time.displayLabel ? time.displayLabel : String(time);
+        doc.text(timeDisplay, 20 + timeColWidth/2, y + rowHeight/2 + 2, { align: 'center' });
 
 // Colonnes de données avec fusion
 
