@@ -1310,7 +1310,7 @@ const minRowHeight = 12; // Hauteur minimale réduite pour plus de flexibilité
 
 const rowHeight = Math.max(minRowHeight, Math.floor(availableHeight / totalRows));
 
-const fontSize = Math.max(5, Math.min(9, rowHeight - 2));
+const fontSize = Math.max(6, Math.min(10, rowHeight - 2));
 
 
 // Largeurs des colonnes
@@ -1348,160 +1348,92 @@ doc.save('planning_hebdomadaire.pdf');
 
 
 function drawPlanningTableWithPagination(doc, day, relevantSlots, mergeInfo, startY, timeColWidth, dataColWidth, rowHeight, fontSize, availableHeight, pageWidth, pageHeight) {
-
-const headerHeight = rowHeight;
-
-const maxRowsPerPage = Math.floor((availableHeight - headerHeight) / rowHeight);
-
-
-
-// Limiter à 2 pages maximum
-
-const maxPages = 2;
-
-const totalPages = Math.min(maxPages, Math.ceil(relevantSlots.length / maxRowsPerPage));
-
-
-// Recalculer les lignes par page pour répartir sur 2 pages au maximum
-
-const adjustedRowsPerPage = Math.ceil(relevantSlots.length / totalPages);
-
-
-let currentSlotIndex = 0;
-
-let pageNumber = 1;
-
-
-while (currentSlotIndex < relevantSlots.length && pageNumber <= maxPages) {
-
-// Ajouter une nouvelle page si ce n'est pas la première partie
-
-if (pageNumber > 1) {
-
-doc.addPage();
-
-
-// Redessiner le titre du jour
-
-doc.setFontSize(16);
-
-doc.setFont('helvetica', 'bold');
-
-doc.text(`${day.charAt(0).toUpperCase() + day.slice(1)} (${pageNumber}/${totalPages})`, pageWidth / 2, 30, { align: "center" });
-
-}
-
-
-// Calculer combien de lignes on peut afficher sur cette page
-
-const remainingSlots = relevantSlots.length - currentSlotIndex;
-
-const slotsThisPage = Math.min(adjustedRowsPerPage, remainingSlots);
-
-const currentPageSlots = relevantSlots.slice(currentSlotIndex, currentSlotIndex + slotsThisPage);
-
-
-// Ajuster la hauteur des lignes si nécessaire pour que tout rentre
-
-const actualRowsThisPage = currentPageSlots.length;
-
-const adjustedRowHeight = Math.max(12, Math.floor(availableHeight / (actualRowsThisPage + 1))); // +1 pour l'en-tête
-
-const adjustedFontSize = Math.max(5, Math.min(9, adjustedRowHeight - 2));
-
-
-// Créer les informations de fusion pour cette page
-
-const pageMergeInfo = createPageMergeInfo(day, currentPageSlots, mergeInfo, currentSlotIndex);
-
-
-// Dessiner le tableau pour cette page
-
-drawPlanningTableWithMerges(doc, day, currentPageSlots, pageMergeInfo, startY, timeColWidth, dataColWidth, adjustedRowHeight, adjustedFontSize);
-
-
-currentSlotIndex += slotsThisPage;
-
-pageNumber++;
-
-}
-
-
-
+    const headerHeight = rowHeight;
+    const maxRowsPerPage = Math.floor((availableHeight - headerHeight) / rowHeight);
+    
+    // Forcer la division en 2 pages maximum
+    const totalSlots = relevantSlots.length;
+    const midPoint = Math.ceil(totalSlots / 2);
+    
+    // Première page
+    const firstPageSlots = relevantSlots.slice(0, midPoint);
+    const firstPageMergeInfo = createPageMergeInfo(day, firstPageSlots, mergeInfo, 0);
+    
+    // Calculer la hauteur optimale pour la première page
+    const firstPageRowHeight = Math.max(12, Math.floor(availableHeight / (firstPageSlots.length + 1)));
+    const firstPageFontSize = Math.max(6, Math.min(10, firstPageRowHeight - 2));
+    
+    drawPlanningTableWithMerges(doc, day, firstPageSlots, firstPageMergeInfo, startY, timeColWidth, dataColWidth, firstPageRowHeight, firstPageFontSize);
+    
+    // Deuxième page si nécessaire
+    if (totalSlots > midPoint) {
+        doc.addPage();
+        
+        // Titre de la deuxième page
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`${day.charAt(0).toUpperCase() + day.slice(1)} (2/2)`, pageWidth / 2, 30, { align: "center" });
+        
+        const secondPageSlots = relevantSlots.slice(midPoint);
+        const secondPageMergeInfo = createPageMergeInfo(day, secondPageSlots, mergeInfo, midPoint);
+        
+        // Calculer la hauteur optimale pour la deuxième page
+        const secondPageRowHeight = Math.max(12, Math.floor(availableHeight / (secondPageSlots.length + 1)));
+        const secondPageFontSize = Math.max(6, Math.min(10, secondPageRowHeight - 2));
+        
+        drawPlanningTableWithMerges(doc, day, secondPageSlots, secondPageMergeInfo, startY, timeColWidth, dataColWidth, secondPageRowHeight, secondPageFontSize);
+    }
 }
 
 
 function createPageMergeInfo(day, pageSlots, originalMergeInfo, startIndex) {
-
-const pageMergeInfo = {};
-
-
-columns.forEach(col => {
-
-pageMergeInfo[col] = [];
-
-pageSlots.forEach((time, pageIndex) => {
-
-const originalIndex = startIndex + pageIndex;
-
-const originalMerge = originalMergeInfo[col][originalIndex];
-
-
-if (originalMerge) {
-
-// Ajuster les informations de fusion pour cette page
-
-const isFirstInOriginal = originalMerge.isFirst;
-
-const isLastInOriginal = originalMerge.isLast;
-
-const originalStartRow = originalMerge.startRow;
-
-const originalEndRow = originalStartRow + originalMerge.mergeLength - 1;
-
-
-// Calculer si cette cellule est la première ou la dernière visible sur cette page
-
-const isFirstVisible = pageIndex === 0 || isFirstInOriginal;
-
-const isLastVisible = pageIndex === pageSlots.length - 1 || isLastInOriginal;
-
-
-// Calculer la longueur de fusion visible sur cette page
-
-const visibleStart = Math.max(originalStartRow, startIndex);
-
-const visibleEnd = Math.min(originalEndRow, startIndex + pageSlots.length - 1);
-
-const visibleLength = visibleEnd - visibleStart + 1;
-
-
-pageMergeInfo[col][pageIndex] = {
-
-isFirst: originalIndex === visibleStart,
-
-isLast: originalIndex === visibleEnd,
-
-mergeLength: visibleLength,
-
-value: originalMerge.value,
-
-startRow: pageIndex - (originalIndex - visibleStart),
-
-isMerged: originalMerge.isMerged
-
-};
-
-}
-
-});
-
-});
-
-
-return pageMergeInfo;
-
-
+    const pageMergeInfo = {};
+    
+    columns.forEach(col => {
+        pageMergeInfo[col] = [];
+        
+        pageSlots.forEach((time, pageIndex) => {
+            const originalIndex = startIndex + pageIndex;
+            
+            if (originalIndex < originalMergeInfo[col].length) {
+                const originalMerge = originalMergeInfo[col][originalIndex];
+                
+                if (originalMerge && originalMerge.value) {
+                    const originalStartRow = originalMerge.startRow;
+                    const originalEndRow = originalStartRow + originalMerge.mergeLength - 1;
+                    
+                    // Calculer les limites visibles sur cette page
+                    const pageStartIndex = startIndex;
+                    const pageEndIndex = startIndex + pageSlots.length - 1;
+                    
+                    const visibleStart = Math.max(originalStartRow, pageStartIndex);
+                    const visibleEnd = Math.min(originalEndRow, pageEndIndex);
+                    
+                    if (originalIndex >= visibleStart && originalIndex <= visibleEnd) {
+                        pageMergeInfo[col][pageIndex] = {
+                            isFirst: originalIndex === visibleStart,
+                            isLast: originalIndex === visibleEnd,
+                            mergeLength: visibleEnd - visibleStart + 1,
+                            value: originalMerge.value,
+                            startRow: visibleStart - startIndex,
+                            isMerged: originalMerge.isMerged
+                        };
+                    }
+                } else {
+                    pageMergeInfo[col][pageIndex] = {
+                        isFirst: true,
+                        isLast: true,
+                        mergeLength: 1,
+                        value: '',
+                        startRow: pageIndex,
+                        isMerged: false
+                    };
+                }
+            }
+        });
+    });
+    
+    return pageMergeInfo;
 }
 
 
