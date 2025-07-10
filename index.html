@@ -1504,7 +1504,7 @@ function drawPlanningTableWithMerges(doc, day, compressedSlots, mergeInfo, start
         });
     });
     
-    drawTableBorders(doc, startY, timeColWidth, dataColWidth, rowHeight, compressedSlots.length + 1, columns.length);
+    drawTableBorders(doc, startY, timeColWidth, dataColWidth, rowHeight, compressedSlots.length + 1, columns.length, mergeInfo);
 }
 
 // Fonction unifiée pour obtenir la couleur selon le mode
@@ -1528,30 +1528,76 @@ function addMinutesToTime(timeStr, minutesToAdd) {
     return `${h}:${m}`;
 }
 
-function drawTableBorders(doc, startY, timeColWidth, dataColWidth, scheduleData, rowHeight) {
+function drawTableBorders(doc, startY, timeColWidth, dataColWidth, rowHeight, totalRows, totalCols, mergeInfo) {
     doc.setDrawColor(0, 0, 0);
     doc.setLineWidth(0.5);
     
-    const totalCols = 7; // A, B, C, D, E, F, G
     const tableWidth = timeColWidth + (totalCols * dataColWidth);
+    const tableHeight = totalRows * rowHeight;
     
-    // Vérification de la structure des données
-    if (!scheduleData || scheduleData.length === 0) {
-        console.error("scheduleData est vide ou undefined");
-        return;
-    }
+    // Bordures extérieures
+    doc.rect(20, startY, tableWidth, tableHeight);
     
-    // Bordure extérieure gauche et droite
-    const tableHeight = scheduleData.length * rowHeight;
-    doc.line(20, startY, 20, startY + tableHeight); // Gauche
-    doc.line(20 + tableWidth, startY, 20 + tableWidth, startY + tableHeight); // Droite
+    // Ligne verticale séparant horaires et données
+    doc.line(20 + timeColWidth, startY, 20 + timeColWidth, startY + tableHeight);
     
-    // Lignes verticales pour séparer les colonnes
-    doc.line(20 + timeColWidth, startY, 20 + timeColWidth, startY + tableHeight); // Séparation horaire/données
+    // Lignes verticales entre les colonnes de données
     for (let i = 1; i < totalCols; i++) {
         const x = 20 + timeColWidth + (i * dataColWidth);
         doc.line(x, startY, x, startY + tableHeight);
     }
+    
+    // Lignes horizontales basées sur les fusions d'activités
+    for (let row = 0; row <= totalRows - 1; row++) {
+        const y = startY + (row * rowHeight);
+        
+        // Ligne du haut (toujours dessiner pour l'en-tête)
+        if (row === 0) {
+            doc.line(20, y, 20 + tableWidth, y);
+            continue;
+        }
+        
+        // Pour les lignes de données, vérifier les fusions
+        let shouldDrawFullLine = false;
+        
+        // Vérifier si on est à la fin du tableau
+        if (row === totalRows - 1) {
+            shouldDrawFullLine = true;
+        } else {
+            // Vérifier chaque colonne pour voir si une fusion se termine
+            columns.forEach((col, colIndex) => {
+                const currentRowIndex = row - 1; // -1 car row 0 est l'en-tête
+                const merge = mergeInfo[col][currentRowIndex];
+                
+                if (merge && merge.isLast) {
+                    shouldDrawFullLine = true;
+                }
+            });
+        }
+        
+        if (shouldDrawFullLine) {
+            doc.line(20, y + rowHeight, 20 + tableWidth, y + rowHeight);
+        } else {
+            // Dessiner seulement les segments nécessaires
+            let currentX = 20;
+            
+            // Ligne pour la colonne horaire (toujours dessiner)
+            doc.line(currentX, y + rowHeight, currentX + timeColWidth, y + rowHeight);
+            currentX += timeColWidth;
+            
+            // Lignes pour chaque colonne de données
+            columns.forEach((col, colIndex) => {
+                const currentRowIndex = row - 1; // -1 car row 0 est l'en-tête
+                const merge = mergeInfo[col][currentRowIndex];
+                
+                if (merge && merge.isLast) {
+                    doc.line(currentX, y + rowHeight, currentX + dataColWidth, y + rowHeight);
+                }
+                currentX += dataColWidth;
+            });
+        }
+    }
+}
     
     // Fonction pour extraire les activités selon la structure des données
     function getActivities(row) {
