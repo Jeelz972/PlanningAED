@@ -1421,6 +1421,7 @@ function getCurrentSlotValue(day, slot, col) {
 function drawPlanningTableWithMerges(doc, day, compressedSlots, mergeInfo, startY, timeColWidth, dataColWidth, rowHeight, fontSize) {
     let currentY = startY;
     
+    
     // Dessiner l'en-tête
     doc.setFillColor(102, 126, 234);
     doc.rect(20, currentY, timeColWidth, rowHeight, 'F');
@@ -1504,7 +1505,7 @@ function drawPlanningTableWithMerges(doc, day, compressedSlots, mergeInfo, start
         });
     });
     
-    drawTableBorders(doc, startY, timeColWidth, dataColWidth, rowHeight, compressedSlots.length + 1, columns.length, mergeInfo);
+   drawTableBorders(doc, startY, timeColWidth, dataColWidth, rowHeight, compressedSlots.length + 1, columns.length, mergeInfo);
 }
 
 // Fonction unifiée pour obtenir la couleur selon le mode
@@ -1535,7 +1536,7 @@ function drawTableBorders(doc, startY, timeColWidth, dataColWidth, rowHeight, to
     const tableWidth = timeColWidth + (totalCols * dataColWidth);
     const tableHeight = totalRows * rowHeight;
     
-    // Bordures extérieures
+    // Bordures extérieures du tableau
     doc.rect(20, startY, tableWidth, tableHeight);
     
     // Ligne verticale séparant horaires et données
@@ -1547,55 +1548,36 @@ function drawTableBorders(doc, startY, timeColWidth, dataColWidth, rowHeight, to
         doc.line(x, startY, x, startY + tableHeight);
     }
     
-    // Lignes horizontales basées sur les fusions d'activités
-    for (let row = 0; row <= totalRows - 1; row++) {
+    // Ligne horizontale sous l'en-tête
+    doc.line(20, startY + rowHeight, 20 + tableWidth, startY + rowHeight);
+    
+    // Lignes horizontales pour les données - uniquement là où les activités changent
+    for (let row = 1; row < totalRows; row++) {
         const y = startY + (row * rowHeight);
+        let segments = [];
         
-        // Ligne du haut (toujours dessiner pour l'en-tête)
-        if (row === 0) {
-            doc.line(20, y, 20 + tableWidth, y);
-            continue;
-        }
+        // Segment pour la colonne horaire (toujours présent)
+        segments.push({start: 20, end: 20 + timeColWidth});
         
-        // Pour les lignes de données, vérifier les fusions
-        let shouldDrawFullLine = false;
-        
-        // Vérifier si on est à la fin du tableau
-        if (row === totalRows - 1) {
-            shouldDrawFullLine = true;
-        } else {
-            // Vérifier chaque colonne pour voir si une fusion se termine
-            columns.forEach((col, colIndex) => {
-                const currentRowIndex = row - 1; // -1 car row 0 est l'en-tête
-                const merge = mergeInfo[col][currentRowIndex];
-                
-                if (merge && merge.isLast) {
-                    shouldDrawFullLine = true;
-                }
-            });
-        }
-        
-        if (shouldDrawFullLine) {
-            doc.line(20, y + rowHeight, 20 + tableWidth, y + rowHeight);
-        } else {
-            // Dessiner seulement les segments nécessaires
-            let currentX = 20;
+        // Vérifier chaque colonne de données
+        for (let col = 0; col < totalCols; col++) {
+            const x = 20 + timeColWidth + (col * dataColWidth);
+            const dataRowIndex = row - 1; // -1 car la première ligne est l'en-tête
             
-            // Ligne pour la colonne horaire (toujours dessiner)
-            doc.line(currentX, y + rowHeight, currentX + timeColWidth, y + rowHeight);
-            currentX += timeColWidth;
-            
-            // Lignes pour chaque colonne de données
-            columns.forEach((col, colIndex) => {
-                const currentRowIndex = row - 1; // -1 car row 0 est l'en-tête
-                const merge = mergeInfo[col][currentRowIndex];
+            if (dataRowIndex < mergeInfo[columns[col]].length) {
+                const merge = mergeInfo[columns[col]][dataRowIndex];
                 
+                // Dessiner une ligne seulement si c'est la fin d'une fusion
                 if (merge && merge.isLast) {
-                    doc.line(currentX, y + rowHeight, currentX + dataColWidth, y + rowHeight);
+                    segments.push({start: x, end: x + dataColWidth});
                 }
-                currentX += dataColWidth;
-            });
+            }
         }
+        
+        // Dessiner les segments
+        segments.forEach(segment => {
+            doc.line(segment.start, y, segment.end, y);
+        });
     }
 }
     
