@@ -309,8 +309,18 @@
 <!-- Bouton d'import -->
 <input type="file" id="import-excel" accept=".xlsx,.xls" style="display:none" />
 <button class="btn btn-primary" onclick="document.getElementById('import-excel').click()">Importer un fichier Excel</button>
-        <button class="btn btn-primary" onclick="generatePDF()">🖨️ Générer PDF imprimable</button>
-        </div>
+            <div class="color-mode-simple">
+    <label for="colorModeSelect">Mode de coloration :</label>
+    <select id="colorModeSelect">
+        <option value="person" selected>Par personne</option>
+        <option value="activity">Par activité</option>
+    </select>
+    
+    <button onclick="generatePDF(document.getElementById('colorModeSelect').value)">
+       🖨️ Générer PDF imprimable
+    </button>
+</div>
+        
         
         <div class="activity-selector">
             <div class="activity-btn bvs1" onclick="selectActivity('BVS1')">B1</div>
@@ -1247,20 +1257,13 @@ function generatePDF(selectedColorMode = 'person') {
         }
         isFirstPage = false;
 
-        // Enlever le titre du jour du centre car il sera affiché avant chaque tableau
-        // doc.setFontSize(16);
-        // doc.setFont('helvetica', 'bold');
-        // doc.text(day.charAt(0).toUpperCase() + day.slice(1), pageWidth / 2, 30, { align: "center" });
-
-        // Filtrer et compresser les créneaux
         const compressedSlots = compressTimeSlots(day);
 
         if (compressedSlots.length === 0) {
-            // Afficher le nom du jour même s'il n'y a pas de données
             doc.setFontSize(14);
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(0, 0, 0);
-            doc.text(day.charAt(0).toUpperCase() + day.slice(1), 20, 40, { align: "center" });
+            doc.text(day.charAt(0).toUpperCase() + day.slice(1), 20, 40);
             
             doc.setFontSize(12);
             doc.setFont('helvetica', 'normal');
@@ -1268,11 +1271,8 @@ function generatePDF(selectedColorMode = 'person') {
             return;
         }
 
-        // Analyser les fusions pour les créneaux compressés
         const mergeInfo = analyzeMergesOptimized(day, compressedSlots);
-
-        // Calcul des dimensions - ajuster startY pour laisser de l'espace pour le nom du jour
-        const startY = 60; // Plus d'espace pour le nom du jour
+        const startY = 60;
         const availableHeight = pageHeight - startY - 20;
         const availableWidth = pageWidth - 40;
 
@@ -1297,7 +1297,6 @@ function generatePDF(selectedColorMode = 'person') {
     doc.save(filename);
 }
 
-// Fonction pour compresser les créneaux horaires avec ajout de 5 minutes
 function compressTimeSlots(day) {
     const compressedSlots = [];
     let currentSlot = null;
@@ -1342,16 +1341,9 @@ function compressTimeSlots(day) {
         compressedSlots.push(currentSlot);
     }
     
-    // Mettre à jour les labels d'affichage avec +5 minutes pour les blocs fusionnés
     compressedSlots.forEach(slot => {
-        if (slot.timeSlots.length > 1) {
-            const endTimeWith5Min = addMinutesToTime(slot.endTime, 5);
-            slot.displayLabel = `${slot.startTime} - ${endTimeWith5Min}`;
-        } else {
-            // Pour les créneaux simples, aussi ajouter 5 minutes
-            const endTimeWith5Min = addMinutesToTime(slot.endTime, 5);
-            slot.displayLabel = `${slot.startTime} - ${endTimeWith5Min}`;
-        }
+        const endTimeWith5Min = addMinutesToTime(slot.endTime, 5);
+        slot.displayLabel = `${slot.startTime} - ${endTimeWith5Min}`;
     });
     
     return compressedSlots;
@@ -1425,15 +1417,13 @@ function getCurrentSlotValue(day, slot, col) {
     return planningData[day][slot.startTime][col] || '';
 }
 
-// Modifier la fonction drawPlanningTableWithMerges pour ajouter le nom du jour
 function drawPlanningTableWithMerges(doc, day, compressedSlots, mergeInfo, startY, timeColWidth, dataColWidth, rowHeight, fontSize) {
     let currentY = startY;
     
-    // Ajouter le nom du jour avant le tableau
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(0, 0, 0);
-    doc.text(day.charAt(0).toUpperCase() + day.slice(1), 20, currentY - 10,, { align: "center" });
+    doc.text(day.charAt(0).toUpperCase() + day.slice(1), 20, currentY - 10);
     
     // Dessiner l'en-tête
     doc.setFillColor(102, 126, 234);
@@ -1518,18 +1508,15 @@ function drawPlanningTableWithMerges(doc, day, compressedSlots, mergeInfo, start
         });
     });
     
-    // Appel corrigé avec les bons paramètres
     drawTableBorders(doc, startY, timeColWidth, dataColWidth, rowHeight, compressedSlots.length + 1, columns.length, mergeInfo, compressedSlots);
 }
-// Fonction unifiée pour obtenir la couleur selon le mode
+
 function getCellColor(value, columnName) {
     if (!value) return null;
     
     if (colorMode === 'person') {
-        // Mode personne : utiliser la couleur basée sur la colonne (personne)
         return getPersonColorRGB(columnName);
     } else {
-        // Mode activité : utiliser la couleur basée sur la valeur (activité)
         return getActivityColorRGB(value);
     }
 }
@@ -1542,7 +1529,6 @@ function addMinutesToTime(timeStr, minutesToAdd) {
     return `${h}:${m}`;
 }
 
-// Remplacer la fonction drawTableBorders par cette version adaptée
 function drawTableBorders(doc, startY, timeColWidth, dataColWidth, rowHeight, totalRows, totalCols, mergeInfo, compressedSlots) {
     doc.setDrawColor(0, 0, 0);
     doc.setLineWidth(0.5);
@@ -1563,26 +1549,21 @@ function drawTableBorders(doc, startY, timeColWidth, dataColWidth, rowHeight, to
     for (let i = 1; i <= compressedSlots.length; i++) {
         const y = startY + (i * rowHeight);
         
-        // Ligne complète pour séparer les en-têtes
         if (i === 1) {
             doc.line(20, y, 20 + tableWidth, y);
         } else {
-            // Ligne pour la colonne heure (toujours présente)
             doc.line(20, y, 20 + timeColWidth, y);
             
-            // Lignes pour chaque colonne de données (en évitant les zones fusionnées)
             columns.forEach((col, colIndex) => {
-                const rowIndex = i - 2; // -1 pour l'en-tête, -1 pour l'index
+                const rowIndex = i - 2;
                 if (rowIndex >= 0 && rowIndex < compressedSlots.length) {
                     const merge = mergeInfo[col][rowIndex];
                     const x = 20 + timeColWidth + (colIndex * dataColWidth);
                     
-                    // Dessiner la ligne seulement si c'est la dernière cellule d'une fusion ou pas de fusion
                     if (!merge || !merge.isMerged || merge.isLast) {
                         doc.line(x, y, x + dataColWidth, y);
                     }
                 } else if (i === compressedSlots.length + 1) {
-                    // Dernière ligne du tableau
                     const x = 20 + timeColWidth + (colIndex * dataColWidth);
                     doc.line(x, y, x + dataColWidth, y);
                 }
@@ -1591,72 +1572,7 @@ function drawTableBorders(doc, startY, timeColWidth, dataColWidth, rowHeight, to
     }
 }
 
-    
-    // Fonction pour extraire les activités selon la structure des données
-    function getActivities(row) {
-        if (!row) return [];
-        
-        // Si la structure est row.activities
-        if (row.activities && Array.isArray(row.activities)) {
-            return row.activities;
-        }
-        
-        // Si la structure est directement un tableau
-        if (Array.isArray(row)) {
-            return row.slice(1); // Exclure la première colonne (horaire)
-        }
-        
-        // Si la structure est un objet avec des propriétés A, B, C, D, E, F, G
-        if (typeof row === 'object') {
-            return ['A', 'B', 'C', 'D', 'E', 'F', 'G'].map(col => row[col] || '');
-        }
-        
-        return [];
-    }
-
-
-// Version alternative plus précise qui dessine des rectangles pour chaque activité
-function drawActivityBorders(doc, startY, timeColWidth, dataColWidth, scheduleData, rowHeight) {
-    doc.setDrawColor(0, 0, 0);
-    doc.setLineWidth(0.5);
-    
-    const totalCols = 7; // A, B, C, D, E, F, G
-    
-    // Grouper les activités consécutives identiques
-    for (let col = 0; col < totalCols; col++) {
-        let activityStart = 0;
-        let currentActivity = scheduleData[0].activities[col] || '';
-        
-        for (let row = 1; row <= scheduleData.length; row++) {
-            const nextActivity = row < scheduleData.length ? (scheduleData[row].activities[col] || '') : '';
-            
-            // Si l'activité change ou si on est à la fin
-            if (nextActivity !== currentActivity || row === scheduleData.length) {
-                // Dessiner le rectangle pour cette activité
-                const x = 20 + timeColWidth + (col * dataColWidth);
-                const y = startY + (activityStart * rowHeight);
-                const width = dataColWidth;
-                const height = (row - activityStart) * rowHeight;
-                
-                if (currentActivity.trim() !== '') {
-                    doc.rect(x, y, width, height);
-                }
-                
-                // Préparer pour la prochaine activité
-                activityStart = row;
-                currentActivity = nextActivity;
-            }
-        }
-    }
-    
-    // Dessiner les bordures de la colonne horaire
-    const timeColHeight = scheduleData.length * rowHeight;
-    doc.rect(20, startY, timeColWidth, timeColHeight);
-}
-// Modifier également drawOptimizedPlanningWithPagination pour passer les bons paramètres
-// Modifier aussi drawOptimizedPlanningWithPagination pour les pages divisées
 function drawOptimizedPlanningWithPagination(doc, day, compressedSlots, mergeInfo, startY, timeColWidth, dataColWidth, rowHeight, fontSize, availableHeight, pageWidth, pageHeight) {
-    const headerHeight = rowHeight;
     const totalSlots = compressedSlots.length;
     const midPoint = Math.ceil(totalSlots / 2);
     
@@ -1671,7 +1587,6 @@ function drawOptimizedPlanningWithPagination(doc, day, compressedSlots, mergeInf
     if (totalSlots > midPoint) {
         doc.addPage();
         
-        // Afficher le nom du jour avec indication de page pour la suite
         const secondPageSlots = compressedSlots.slice(midPoint);
         const secondPageMergeInfo = createPageMergeInfo(day, secondPageSlots, mergeInfo, midPoint);
         
@@ -1681,6 +1596,7 @@ function drawOptimizedPlanningWithPagination(doc, day, compressedSlots, mergeInf
         drawPlanningTableWithMerges(doc, `${day} (suite)`, secondPageSlots, secondPageMergeInfo, startY, timeColWidth, dataColWidth, secondPageRowHeight, secondPageFontSize);
     }
 }
+
 function createPageMergeInfo(day, pageSlots, originalMergeInfo, startIndex) {
     const pageMergeInfo = {};
     
@@ -1730,7 +1646,6 @@ function createPageMergeInfo(day, pageSlots, originalMergeInfo, startIndex) {
     return pageMergeInfo;
 }
 
-// Fonction pour obtenir la couleur RGB d'une activité
 function getActivityColorRGB(value) {
     const hex = getActivityColor(value);
     if (!hex) return null;
@@ -1742,7 +1657,6 @@ function getActivityColorRGB(value) {
     };
 }
 
-// Fonction pour obtenir la couleur RGB d'une personne
 function getPersonColorRGB(personne) {
     const hex = getCouleurPourPersonne(personne);
     if (!hex) return null;
@@ -1786,13 +1700,13 @@ function getActivityColor(value) {
 
 function getCouleurPourPersonne(personne) {
     const couleursPersonnes = {
-        'a': "#FF5733", // Rouge
-        'b': "#33C1FF", // Bleu
-        'c': "#008000", // Vert
-        'd': "#d58490", // Marron
-        'e': "#FF33A8", // Rose
-        'f': "#33FFB2", // Turquoise
-        'g': "#A833FF"  // Violet
+        'a': "#FF5733",
+        'b': "#33C1FF",
+        'c': "#008000",
+        'd': "#d58490",
+        'e': "#FF33A8",
+        'f': "#33FFB2",
+        'g': "#A833FF"
     };
     return couleursPersonnes[personne.toLowerCase()] || "#CCCCCC";
 }
@@ -1811,7 +1725,6 @@ function truncateText(doc, text, maxWidth, fontSize) {
     return truncated + "...";
 }
 
-// Fonctions utilitaires pour l'interface utilisateur
 function generatePDFByActivity() {
     generatePDF('activity');
 }
@@ -1820,7 +1733,6 @@ function generatePDFByPerson() {
     generatePDF('person');
 }
 
-// Fonction pour générer un PDF avec tous les jours
 function generateAllDaysPDF(selectedColorMode = 'activity') {
     colorMode = selectedColorMode;
     
@@ -1837,12 +1749,10 @@ function generateAllDaysPDF(selectedColorMode = 'activity') {
         }
         isFirstPage = false;
 
-        // Titre du jour avec numéro de page
         doc.setFontSize(18);
         doc.setFont('helvetica', 'bold');
         doc.text(`${day.charAt(0).toUpperCase() + day.slice(1)} (${dayIndex + 1}/${days.length})`, pageWidth / 2, 30, { align: "center" });
 
-        // Reste du code identique...
         const compressedSlots = compressTimeSlots(day);
 
         if (compressedSlots.length === 0) {
@@ -1853,7 +1763,7 @@ function generateAllDaysPDF(selectedColorMode = 'activity') {
         }
 
         const mergeInfo = analyzeMergesOptimized(day, compressedSlots);
-        const startY = 60; // Plus d'espace pour le titre amélioré
+        const startY = 60;
         const availableHeight = pageHeight - startY - 20;
         const availableWidth = pageWidth - 40;
 
