@@ -1418,9 +1418,9 @@ function getCurrentSlotValue(day, slot, col) {
     return planningData[day][slot.startTime][col] || '';
 }
 
+// Modifier l'appel dans drawPlanningTableWithMerges
 function drawPlanningTableWithMerges(doc, day, compressedSlots, mergeInfo, startY, timeColWidth, dataColWidth, rowHeight, fontSize) {
     let currentY = startY;
-    
     
     // Dessiner l'en-tête
     doc.setFillColor(102, 126, 234);
@@ -1505,9 +1505,9 @@ function drawPlanningTableWithMerges(doc, day, compressedSlots, mergeInfo, start
         });
     });
     
-   drawTableBorders(doc, startY, timeColWidth, dataColWidth, rowHeight, compressedSlots.length + 1, columns.length, mergeInfo);
+    // Appel corrigé avec les bons paramètres
+    drawTableBorders(doc, startY, timeColWidth, dataColWidth, rowHeight, compressedSlots.length + 1, columns.length, mergeInfo, compressedSlots);
 }
-
 // Fonction unifiée pour obtenir la couleur selon le mode
 function getCellColor(value, columnName) {
     if (!value) return null;
@@ -1529,57 +1529,55 @@ function addMinutesToTime(timeStr, minutesToAdd) {
     return `${h}:${m}`;
 }
 
-function drawTableBorders(doc, startY, timeColWidth, dataColWidth, rowHeight, totalRows, totalCols, mergeInfo) {
+// Remplacer la fonction drawTableBorders par cette version adaptée
+function drawTableBorders(doc, startY, timeColWidth, dataColWidth, rowHeight, totalRows, totalCols, mergeInfo, compressedSlots) {
     doc.setDrawColor(0, 0, 0);
     doc.setLineWidth(0.5);
     
+    // Bordures extérieures
     const tableWidth = timeColWidth + (totalCols * dataColWidth);
     const tableHeight = totalRows * rowHeight;
-    
-    // Bordures extérieures du tableau
     doc.rect(20, startY, tableWidth, tableHeight);
     
-    // Ligne verticale séparant horaires et données
+    // Lignes verticales
     doc.line(20 + timeColWidth, startY, 20 + timeColWidth, startY + tableHeight);
-    
-    // Lignes verticales entre les colonnes de données
     for (let i = 1; i < totalCols; i++) {
         const x = 20 + timeColWidth + (i * dataColWidth);
         doc.line(x, startY, x, startY + tableHeight);
     }
     
-    // Ligne horizontale sous l'en-tête
-    doc.line(20, startY + rowHeight, 20 + tableWidth, startY + rowHeight);
-    
-    // Lignes horizontales pour les données - uniquement là où les activités changent
-    for (let row = 1; row < totalRows; row++) {
-        const y = startY + (row * rowHeight);
-        let segments = [];
+    // Lignes horizontales
+    for (let i = 1; i <= compressedSlots.length; i++) {
+        const y = startY + (i * rowHeight);
         
-        // Segment pour la colonne horaire (toujours présent)
-        segments.push({start: 20, end: 20 + timeColWidth});
-        
-        // Vérifier chaque colonne de données
-        for (let col = 0; col < totalCols; col++) {
-            const x = 20 + timeColWidth + (col * dataColWidth);
-            const dataRowIndex = row - 1; // -1 car la première ligne est l'en-tête
+        // Ligne complète pour séparer les en-têtes
+        if (i === 1) {
+            doc.line(20, y, 20 + tableWidth, y);
+        } else {
+            // Ligne pour la colonne heure (toujours présente)
+            doc.line(20, y, 20 + timeColWidth, y);
             
-            if (dataRowIndex < mergeInfo[columns[col]].length) {
-                const merge = mergeInfo[columns[col]][dataRowIndex];
-                
-                // Dessiner une ligne seulement si c'est la fin d'une fusion
-                if (merge && merge.isLast) {
-                    segments.push({start: x, end: x + dataColWidth});
+            // Lignes pour chaque colonne de données (en évitant les zones fusionnées)
+            columns.forEach((col, colIndex) => {
+                const rowIndex = i - 2; // -1 pour l'en-tête, -1 pour l'index
+                if (rowIndex >= 0 && rowIndex < compressedSlots.length) {
+                    const merge = mergeInfo[col][rowIndex];
+                    const x = 20 + timeColWidth + (colIndex * dataColWidth);
+                    
+                    // Dessiner la ligne seulement si c'est la dernière cellule d'une fusion ou pas de fusion
+                    if (!merge || !merge.isMerged || merge.isLast) {
+                        doc.line(x, y, x + dataColWidth, y);
+                    }
+                } else if (i === compressedSlots.length + 1) {
+                    // Dernière ligne du tableau
+                    const x = 20 + timeColWidth + (colIndex * dataColWidth);
+                    doc.line(x, y, x + dataColWidth, y);
                 }
-            }
+            });
         }
-        
-        // Dessiner les segments
-        segments.forEach(segment => {
-            doc.line(segment.start, y, segment.end, y);
-        });
     }
 }
+
     
     // Fonction pour extraire les activités selon la structure des données
     function getActivities(row) {
@@ -1642,12 +1640,13 @@ function drawActivityBorders(doc, startY, timeColWidth, dataColWidth, scheduleDa
     const timeColHeight = scheduleData.length * rowHeight;
     doc.rect(20, startY, timeColWidth, timeColHeight);
 }
-function drawOptimizedPlanningWithPagination(doc, day, relevantSlots, mergeInfo, startY, timeColWidth, dataColWidth, rowHeight, fontSize, availableHeight, pageWidth, pageHeight) {
+// Modifier également drawOptimizedPlanningWithPagination pour passer les bons paramètres
+function drawOptimizedPlanningWithPagination(doc, day, compressedSlots, mergeInfo, startY, timeColWidth, dataColWidth, rowHeight, fontSize, availableHeight, pageWidth, pageHeight) {
     const headerHeight = rowHeight;
-    const totalSlots = relevantSlots.length;
+    const totalSlots = compressedSlots.length;
     const midPoint = Math.ceil(totalSlots / 2);
     
-    const firstPageSlots = relevantSlots.slice(0, midPoint);
+    const firstPageSlots = compressedSlots.slice(0, midPoint);
     const firstPageMergeInfo = createPageMergeInfo(day, firstPageSlots, mergeInfo, 0);
     
     const firstPageRowHeight = Math.max(12, Math.floor(availableHeight / (firstPageSlots.length + 1)));
@@ -1662,7 +1661,7 @@ function drawOptimizedPlanningWithPagination(doc, day, relevantSlots, mergeInfo,
         doc.setFont('helvetica', 'bold');
         doc.text(`${day.charAt(0).toUpperCase() + day.slice(1)} (2/2)`, pageWidth / 2, 30, { align: "center" });
         
-        const secondPageSlots = relevantSlots.slice(midPoint);
+        const secondPageSlots = compressedSlots.slice(midPoint);
         const secondPageMergeInfo = createPageMergeInfo(day, secondPageSlots, mergeInfo, midPoint);
         
         const secondPageRowHeight = Math.max(12, Math.floor(availableHeight / (secondPageSlots.length + 1)));
@@ -1671,7 +1670,6 @@ function drawOptimizedPlanningWithPagination(doc, day, relevantSlots, mergeInfo,
         drawPlanningTableWithMerges(doc, day, secondPageSlots, secondPageMergeInfo, startY, timeColWidth, dataColWidth, secondPageRowHeight, secondPageFontSize);
     }
 }
-
 function createPageMergeInfo(day, pageSlots, originalMergeInfo, startIndex) {
     const pageMergeInfo = {};
     
