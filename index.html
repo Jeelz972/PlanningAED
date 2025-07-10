@@ -1620,48 +1620,7 @@ function drawTableBorders(doc, startY, timeColWidth, dataColWidth, rowHeight, to
         
         return [];
     }
-    
-    // Lignes horizontales pour entourer chaque activité
-    let currentY = startY;
-    
-    for (let i = 0; i < scheduleData.length; i++) {
-        const row = scheduleData[i];
-        
-        // Ligne du haut de la première ligne
-        if (i === 0) {
-            doc.line(20, currentY, 20 + tableWidth, currentY);
-        }
-        
-        // Vérifier si la ligne suivante est différente pour chaque colonne
-        const nextRow = scheduleData[i + 1];
-        let shouldDrawLine = false;
-        
-        if (i === scheduleData.length - 1) {
-            // Dernière ligne : toujours dessiner
-            shouldDrawLine = true;
-        } else if (nextRow) {
-            // Comparer avec la ligne suivante pour chaque colonne
-            const currentActivities = getActivities(row);
-            const nextActivities = getActivities(nextRow);
-            
-            for (let col = 0; col < totalCols; col++) {
-                const currentActivity = currentActivities[col] || '';
-                const nextActivity = nextActivities[col] || '';
-                
-                if (currentActivity !== nextActivity) {
-                    shouldDrawLine = true;
-                    break;
-                }
-            }
-        }
-        
-        currentY += rowHeight;
-        
-        if (shouldDrawLine) {
-            doc.line(20, currentY, 20 + tableWidth, currentY);
-        }
-    }
-}
+
 
 // Version alternative plus précise qui dessine des rectangles pour chaque activité
 function drawActivityBorders(doc, startY, timeColWidth, dataColWidth, scheduleData, rowHeight) {
