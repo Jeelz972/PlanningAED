@@ -297,6 +297,32 @@
   }
   #synthese-table table { min-width: 300px; }
 }
+        .color-mode-simple {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 16px 0; /* adapte selon ton layout */
+}
+
+.color-mode-simple label {
+    font-weight: 500;
+    color: #333; /* adapte à ta palette */
+}
+
+.color-mode-simple select {
+    padding: 4px 12px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    font-size: 1rem;
+    background: #f9f9f9;
+    color: #333;
+    transition: border-color 0.2s;
+}
+
+.color-mode-simple select:focus {
+    border-color: #007bff; /* couleur d’accent de ton site */
+    outline: none;
+}
     </style>
 </head>
 <body>
@@ -316,7 +342,7 @@
         <option value="activity">Par activité</option>
     </select>
     
-    <button onclick="generatePDF(document.getElementById('colorModeSelect').value)">
+    <button class="btn btn-primary" onclick="generatePDF(document.getElementById('colorModeSelect').value)">
        🖨️ Générer PDF imprimable
     </button>
 </div>
