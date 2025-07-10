@@ -1230,7 +1230,7 @@ function setColorMode(mode) {
 }
 
 // Fonction principale de génération PDF avec choix de mode
-// Modifier aussi la fonction generatePDF pour ajuster l'espacement
+
 function generatePDF(selectedColorMode = 'person') {
     colorMode = selectedColorMode;
     
@@ -1260,7 +1260,7 @@ function generatePDF(selectedColorMode = 'person') {
             doc.setFontSize(14);
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(0, 0, 0);
-            doc.text(day.charAt(0).toUpperCase() + day.slice(1), 20, 40);
+            doc.text(day.charAt(0).toUpperCase() + day.slice(1), 20, 40, { align: "center" });
             
             doc.setFontSize(12);
             doc.setFont('helvetica', 'normal');
@@ -1433,7 +1433,7 @@ function drawPlanningTableWithMerges(doc, day, compressedSlots, mergeInfo, start
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(0, 0, 0);
-    doc.text(day.charAt(0).toUpperCase() + day.slice(1), 20, currentY - 10);
+    doc.text(day.charAt(0).toUpperCase() + day.slice(1), 20, currentY - 10,, { align: "center" });
     
     // Dessiner l'en-tête
     doc.setFillColor(102, 126, 234);
