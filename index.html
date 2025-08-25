@@ -496,75 +496,80 @@
         let startCol = null;
         let startRow = null;
         let planningData = {};
+        
         // Table de correspondance pour l'affichage (affichage => interne)
-const affichageMapping = {
-  'Voltige': 'Suivi de classe/accompagnement élèves/aide bureau',
-  'Renfort surveillance': 'Cours/WC/Hall'
-};
-// Table inverse (interne => affichage)
-const affichageReverseMapping = {
-  'Suivi de classe/accompagnement élèves/aide bureau': 'Voltige',
-  'Cours/WC/Hall': 'Renfort surveillance'
-};
+        const affichageMapping = {
+          'Voltige': 'Suivi de classe/accompagnement élèves/aide bureau',
+          'Renfort surveillance': 'Cours/WC/Hall'
+        };
+        
+        // Table inverse (interne => affichage)
+        const affichageReverseMapping = {
+          'Suivi de classe/accompagnement élèves/aide bureau': 'Voltige',
+          'Cours/WC/Hall': 'Renfort surveillance'
+        };
+        
         // Stockage des noms personnalisés
-let customNames = {};
+        let customNames = {};
 
-// Initialiser les noms par défaut
-function initializeNames() {
-    columns.forEach(col => {
-        if (!customNames[col]) {
-            customNames[col] = col; // Par défaut, utiliser la lettre de la colonne
+        // Initialiser les noms par défaut
+        function initializeNames() {
+            columns.forEach(col => {
+                if (!customNames[col]) {
+                    customNames[col] = col;
+                }
+            });
+            updateNameInputs();
         }
-    });
-    updateNameInputs();
-}
 
-// Mettre à jour les inputs de noms
-function updateNameInputs() {
-    const container = document.getElementById('name-mapping');
-    container.innerHTML = '';
-    
-    columns.forEach(col => {
-        const div = document.createElement('div');
-        div.innerHTML = `
-            <label for="name-${col}" style="display: block; font-weight: bold; margin-bottom: 5px;">
-                Colonne ${col}:
-            </label>
-            <input type="text" 
-                   id="name-${col}" 
-                   value="${customNames[col] || col}" 
-                   placeholder="Nom de la personne"
-                   style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;"
-                   onchange="updateCustomName('${col}', this.value)">
-        `;
-        container.appendChild(div);
-    });
-}
+        // Mettre à jour les inputs de noms
+        function updateNameInputs() {
+            const container = document.getElementById('name-mapping');
+            container.innerHTML = '';
+            
+            columns.forEach(col => {
+                const div = document.createElement('div');
+                div.innerHTML = `
+                    <label for="name-${col}" style="display: block; font-weight: bold; margin-bottom: 5px;">
+                        Colonne ${col}:
+                    </label>
+                    <input type="text" 
+                           id="name-${col}" 
+                           value="${customNames[col] || col}" 
+                           placeholder="Nom de la personne"
+                           style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;"
+                           onchange="updateCustomName('${col}', this.value)">
+                `;
+                container.appendChild(div);
+            });
+        }
 
-// Mettre à jour un nom personnalisé
-function updateCustomName(col, name) {
-    customNames[col] = name.trim() || col;
-}
+        // Mettre à jour un nom personnalisé
+        function updateCustomName(col, name) {
+            customNames[col] = name.trim() || col;
+        }
 
-// Réinitialiser les noms aux valeurs par défaut
-function resetNames() {
-    columns.forEach(col => {
-        customNames[col] = col;
-    });
-    updateNameInputs();
-}
+        // Réinitialiser les noms aux valeurs par défaut
+        function resetNames() {
+            columns.forEach(col => {
+                customNames[col] = col;
+            });
+            updateNameInputs();
+        }
 
-// Obtenir le nom d'affichage pour une colonne
-function getDisplayName(col) {
-    return customNames[col] || col;
-}
-function getAffichage(nom) {
-  return affichageMapping[nom] || nom;
-}
-function getNomInterne(nom) {
-  // pour l'enregistrement/import/export
-  return affichageReverseMapping[nom] || nom;
-}
+        // Obtenir le nom d'affichage pour une colonne
+        function getDisplayName(col) {
+            return customNames[col] || col;
+        }
+
+        function getAffichage(nom) {
+          return affichageMapping[nom] || nom;
+        }
+        
+        function getNomInterne(nom) {
+          return affichageReverseMapping[nom] || nom;
+        }
+        
         // Initialiser les données de planning
         days.forEach(day => {
             planningData[day] = {};
@@ -575,24 +580,15 @@ function getNomInterne(nom) {
                 });
             });
         });
+        
         document.addEventListener('mouseup', () => isMouseDown = false);
 
-document.querySelectorAll('.planning-cell').forEach(cell => {
-  cell.addEventListener('mousedown', function() {
-    isMouseDown = true;
-    // Remplir la cellule
-  });
-  cell.addEventListener('mouseover', function() {
-    if (isMouseDown) {
-      // Remplir la cellule
-    }
-  });
-});
         function initializePlannings() {
             days.forEach(day => {
                 createPlanningGrid(day);
             });
         }
+        
         function createPlanningGrid(day) {
             const container = document.getElementById(`planning-${day}`);
             container.innerHTML = '';
@@ -612,11 +608,9 @@ document.querySelectorAll('.planning-cell').forEach(cell => {
                 });
             });
             
-            // Appelle la fusion des cellules identiques seulement après avoir tout créé
             mergeIdenticalCells(day);
         }
 
-        
         function createCell(content, className) {
             const cell = document.createElement('div');
             cell.className = className;
@@ -624,84 +618,56 @@ document.querySelectorAll('.planning-cell').forEach(cell => {
             return cell;
         }
         
-function createPlanningCell(day, time, col) {
-    const cell = document.createElement('div');
-    cell.className = 'planning-cell';
+        function createPlanningCell(day, time, col) {
+            const cell = document.createElement('div');
+            cell.className = 'planning-cell';
 
-    // Repère la position de la cellule
-    const rowIdx = timeSlots.indexOf(time);
-    const colIdx = columns.indexOf(col);
+            const rowIdx = timeSlots.indexOf(time);
+            const colIdx = columns.indexOf(col);
 
-    // Gestion drag & drop
-    cell.onmousedown = function(e) {
-        isMouseDown = true;
-        dragActivity = selectedActivity;
-        startDay = day;
-        startCol = col;
-        startRow = rowIdx;
-        updateCell(day, time, col, dragActivity, false);
-        document.body.style.userSelect = "none";
-    };
-    cell.onmouseover = function(e) {
-        if (isMouseDown && dragActivity && day === startDay && col === startCol) {
-            // Remplit les cases entre startRow et rowIdx
-            let min = Math.min(startRow, rowIdx);
-            let max = Math.max(startRow, rowIdx);
-            for (let r = min; r <= max; r++) {
-                let t = timeSlots[r];
-                planningData[day][t][col] = dragActivity;
-            }
-            createPlanningGrid(day);
+            cell.onmousedown = function(e) {
+                isMouseDown = true;
+                dragActivity = selectedActivity;
+                startDay = day;
+                startCol = col;
+                startRow = rowIdx;
+                updateCell(day, time, col, dragActivity, false);
+                document.body.style.userSelect = "none";
+            };
+            
+            cell.onmouseover = function(e) {
+                if (isMouseDown && dragActivity && day === startDay && col === startCol) {
+                    let min = Math.min(startRow, rowIdx);
+                    let max = Math.max(startRow, rowIdx);
+                    for (let r = min; r <= max; r++) {
+                        let t = timeSlots[r];
+                        planningData[day][t][col] = dragActivity;
+                    }
+                    createPlanningGrid(day);
+                }
+            };
+            
+            cell.onmouseup = function(e) {
+                isMouseDown = false;
+                dragActivity = null;
+                startDay = null;
+                startCol = null;
+                startRow = null;
+                document.body.style.userSelect = "";
+            };
+
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.value = getAffichage(planningData[day][time][col]);
+            input.onchange = function() {
+                planningData[day][time][col] = getNomInterne(this.value);
+                updateCellAppearance(cell, this.value);
+            };
+
+            cell.appendChild(input);
+            updateCellAppearance(cell, planningData[day][time][col]);
+            return cell;
         }
-    };
-    cell.onmouseup = function(e) {
-        isMouseDown = false;
-        dragActivity = null;
-        startDay = null;
-        startCol = null;
-        startRow = null;
-        document.body.style.userSelect = "";
-    };
-
-    // Pour mobile/tactile :
-    cell.ontouchstart = function(e) {
-        isMouseDown = true;
-        dragActivity = selectedActivity;
-        startDay = day;
-        startCol = col;
-        startRow = rowIdx;
-        updateCell(day, time, col, dragActivity, false);
-    };
-    cell.ontouchmove = function(e) {
-        if (!isMouseDown) return;
-        const touch = e.touches[0];
-        const target = document.elementFromPoint(touch.clientX, touch.clientY);
-        if (target && target.classList.contains('planning-cell')) {
-            const idx = Array.from(target.parentNode.children).indexOf(target);
-            // (Optionnel: tu peux retrouver la position exacte ici)
-        }
-    };
-    cell.ontouchend = function(e) {
-        isMouseDown = false;
-        dragActivity = null;
-        startDay = null;
-        startCol = null;
-        startRow = null;
-    };
-
-    // On continue d'afficher l'input pour l'édition manuelle
-    const input = document.createElement('input');
-    input.type = 'text';
-    input.value = getAffichage(planningData[day][time][col]);
-    input.onchange = function() {
-        planningData[day][time][col] = getNomInterne(this.value);
-        updateCellAppearance(cell, this.value);
-    };
-
-    cell.appendChild(input);
-    updateCellAppearance(cell, planningData[day][time][col]);
-    return cell;
-}
         
         function updateCell(day, time, col, activity) {
             planningData[day][time][col] = activity;
@@ -709,7 +675,6 @@ function createPlanningCell(day, time, col) {
         }
         
         function updateCellAppearance(cell, value) {
-            // Retirer toutes les classes d'activité
             const activityClasses = ['bvs1', 'bvs2', 'portail', 'voltige', 'renfort', 'cours-impaire', 'cours-paire', 'etude-impaire', 'etude-paire', 'ap', 'hall', 'refectoire', 'turbo', 'bureau-midi', 'pause', 'marsons'];
             activityClasses.forEach(cls => cell.classList.remove(cls));
             
@@ -748,17 +713,17 @@ function createPlanningCell(day, time, col) {
         }
         
        function showTab(day) {
-    document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-    event.target.classList.add('active');
-    document.getElementById(day).classList.add('active');
-    if(day === 'synthese') {
-        generateSynthesePersonneVolume();
-    }
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById(day).classList.add('active');
+            if(day === 'synthese') {
+                generateSynthesePersonneVolume();
+            }
             if(day === 'syntheseJour') {
-        generateSynthesePersonneParJour();
-    }
-}
+                generateSynthesePersonneParJour();
+            }
+        }
         
         function clearAll() {
             if (confirm('Êtes-vous sûr de vouloir effacer tous les plannings ?')) {
@@ -772,1184 +737,649 @@ function createPlanningCell(day, time, col) {
                 });
             }
         }
+        
         function mergeIdenticalCells(day) {
-    const rows = timeSlots.length;
-    const cols = columns.length;
-    const grid = document.getElementById('planning-' + day);
-    if (!grid) return;
+            const rows = timeSlots.length;
+            const cols = columns.length;
+            const grid = document.getElementById('planning-' + day);
+            if (!grid) return;
 
-    // Construction du tableau des cellules (données uniquement)
-    const cellsMatrix = [];
-    for (let col = 0; col < cols; col++) {
-        cellsMatrix[col] = [];
-        for (let row = 0; row < rows; row++) {
-            // Sauter la toute première ligne (entête)
-            const idx = (row + 1) * (cols + 1) + (col + 1);
-            cellsMatrix[col][row] = grid.children[idx];
-        }
-    }
-
-    // Fusionne uniquement les cellules de données (pas l'entête)
-    for (let col = 0; col < cols; col++) {
-        let start = 0;
-        while (start < rows) {
-            let end = start;
-            while (
-                end + 1 < rows &&
-                planningData[day][timeSlots[end]][columns[col]] &&
-                planningData[day][timeSlots[end]][columns[col]] === planningData[day][timeSlots[end + 1]][columns[col]]
-            ) {
-                end++;
-            }
-            if (end > start) {
-                cellsMatrix[col][start].style.gridRow = `span ${end - start + 1}`;
-                for (let r = start + 1; r <= end; r++) {
-                    cellsMatrix[col][r].style.display = "none";
-                }
-            } else {
-                cellsMatrix[col][start].style.gridRow = "";
-                cellsMatrix[col][start].style.display = "";
-            }
-            start = end + 1;
-        }
-    }
-}
-       function generateExcel() {
-     const wb = XLSX.utils.book_new();
-
-    // Couleurs identiques à ton code
-    const activityColors = {
-        'bvs1': 'FFC91E63',
-        'bvs2': 'FFFF9800',
-        'portail': 'FFFF5722',
-        'voltige': 'FF2196F3',
-        'renfort': 'FF795548',
-        'cours-impaire': 'FF4CAF50',
-        'cours-paire': 'FF8BC34A',
-        'etude-impaire': 'FF9C27B0',
-        'etude-paire': 'FF673AB7',
-        'ap': 'FF009688',
-        'hall': 'FF607D8B',
-        'refectoire': 'FFFF6F00',
-        'turbo': 'FFF44336',
-        'bureau-midi': 'FF3F51B5',
-        'pause': 'FF9E9E9E',
-        'marsons': 'FF00BCD4'
-    };
-    function getActivityKey(value) {
-        if (!value) return null;
-        let key = value.toLowerCase()
-            .replace(/\s+/g, '-')
-            .replace('renfort-surveillance', 'renfort')
-            .replace('réfectoire', 'refectoire');
-        return activityColors[key] ? key : null;
-    }
-
-    days.forEach(day => {
-        const wsData = [];
-        const headerRow = ['Heure', ...columns];
-        wsData.push(headerRow);
-
-        // Génération des données ligne par ligne
-        timeSlots.forEach(time => {
-            const row = [time];
-            columns.forEach(col => {
-                row.push(planningData[day][time][col] || '');
-            });
-            wsData.push(row);
-        });
-
-        const ws = XLSX.utils.aoa_to_sheet(wsData);
-
-        // Ajout des couleurs
-        for(let r=1; r<wsData.length; r++) { // r=1 pour ignorer l'entête
-            for(let c=1; c<=columns.length; c++) { // c=1 car colonne 0 = heure
-                const value = wsData[r][c];
-                const colorKey = getActivityKey(value);
-                if (colorKey) {
-                    const cellAddress = XLSX.utils.encode_cell({r, c});
-                    if (!ws[cellAddress]) ws[cellAddress] = { t: 's', v: value };
-                    ws[cellAddress].s = {
-                        fill: { fgColor: { rgb: activityColors[colorKey] } },
-                        font: { color: { rgb: "FFFFFFFF" }, bold: true }
-                    };
+            const cellsMatrix = [];
+            for (let col = 0; col < cols; col++) {
+                cellsMatrix[col] = [];
+                for (let row = 0; row < rows; row++) {
+                    const idx = (row + 1) * (cols + 1) + (col + 1);
+                    cellsMatrix[col][row] = grid.children[idx];
                 }
             }
-        }
 
-        // Fusion des cellules (déjà vu précédemment)
-        ws['!merges'] = [];
-        columns.forEach((col, colIdx) => {
-            let start = 1;
-            let value = wsData[start][colIdx + 1];
-            for (let row = 2; row < wsData.length; row++) {
-                if (wsData[row][colIdx + 1] !== value) {
-                    if (row - start > 1 && value) {
-                        ws['!merges'].push({ s: { r: start, c: colIdx + 1 }, e: { r: row - 1, c: colIdx + 1 } });
+            for (let col = 0; col < cols; col++) {
+                let start = 0;
+                while (start < rows) {
+                    let end = start;
+                    while (
+                        end + 1 < rows &&
+                        planningData[day][timeSlots[end]][columns[col]] &&
+                        planningData[day][timeSlots[end]][columns[col]] === planningData[day][timeSlots[end + 1]][columns[col]]
+                    ) {
+                        end++;
                     }
-                    start = row;
-                    value = wsData[row][colIdx + 1];
+                    if (end > start) {
+                        cellsMatrix[col][start].style.gridRow = `span ${end - start + 1}`;
+                        for (let r = start + 1; r <= end; r++) {
+                            cellsMatrix[col][r].style.display = "none";
+                        }
+                    } else {
+                        cellsMatrix[col][start].style.gridRow = "";
+                        cellsMatrix[col][start].style.display = "";
+                    }
+                    start = end + 1;
                 }
             }
-            if (wsData.length - start > 1 && value) {
-                ws['!merges'].push({ s: { r: start, c: colIdx + 1 }, e: { r: wsData.length - 1, c: colIdx + 1 } });
+        }
+        
+        function generateExcel() {
+            const wb = XLSX.utils.book_new();
+
+            const activityColors = {
+                'bvs1': 'FFC91E63',
+                'bvs2': 'FFFF9800',
+                'portail': 'FFFF5722',
+                'voltige': 'FF2196F3',
+                'renfort': 'FF795548',
+                'cours-impaire': 'FF4CAF50',
+                'cours-paire': 'FF8BC34A',
+                'etude-impaire': 'FF9C27B0',
+                'etude-paire': 'FF673AB7',
+                'ap': 'FF009688',
+                'hall': 'FF607D8B',
+                'refectoire': 'FFFF6F00',
+                'turbo': 'FFF44336',
+                'bureau-midi': 'FF3F51B5',
+                'pause': 'FF9E9E9E',
+                'marsons': 'FF00BCD4'
+            };
+            
+            function getActivityKey(value) {
+                if (!value) return null;
+                let key = value.toLowerCase()
+                    .replace(/\s+/g, '-')
+                    .replace('renfort-surveillance', 'renfort')
+                    .replace('réfectoire', 'refectoire');
+                return activityColors[key] ? key : null;
             }
-        });
 
-        // Largeur des colonnes
-        ws['!cols'] = [{ wch: 10 }];
-        columns.forEach(() => ws['!cols'].push({ wch: 15 }));
+            days.forEach(day => {
+                const wsData = [];
+                const headerRow = ['Heure', ...columns.map(col => getDisplayName(col))];
+                wsData.push(headerRow);
 
-        XLSX.utils.book_append_sheet(wb, ws, day.charAt(0).toUpperCase() + day.slice(1));
-    });
+                timeSlots.forEach(time => {
+                    const row = [time];
+                    columns.forEach(col => {
+                        row.push(planningData[day][time][col] || '');
+                    });
+                    wsData.push(row);
+                });
 
-    // Sauvegarder en .xlsx pour garder la mise en forme
-    XLSX.writeFile(wb, 'planning_hebdomadaire.xlsx');
-}
+                const ws = XLSX.utils.aoa_to_sheet(wsData);
 
+                for(let r=1; r<wsData.length; r++) {
+                    for(let c=1; c<=columns.length; c++) {
+                        const value = wsData[r][c];
+                        const colorKey = getActivityKey(value);
+                        if (colorKey) {
+                            const cellAddress = XLSX.utils.encode_cell({r, c});
+                            if (!ws[cellAddress]) ws[cellAddress] = { t: 's', v: value };
+                            ws[cellAddress].s = {
+                                fill: { fgColor: { rgb: activityColors[colorKey] } },
+                                font: { color: { rgb: "FFFFFFFF" }, bold: true }
+                            };
+                        }
+                    }
+                }
 
-        function updateCell(day, time, col, activity, refresh = true) {
-    planningData[day][time][col] = activity;
-    if (refresh) createPlanningGrid(day);
-}
+                ws['!merges'] = [];
+                columns.forEach((col, colIdx) => {
+                    let start = 1;
+                    let value = wsData[start][colIdx + 1];
+                    for (let row = 2; row < wsData.length; row++) {
+                        if (wsData[row][colIdx + 1] !== value) {
+                            if (row - start > 1 && value) {
+                                ws['!merges'].push({ s: { r: start, c: colIdx + 1 }, e: { r: row - 1, c: colIdx + 1 } });
+                            }
+                            start = row;
+                            value = wsData[row][colIdx + 1];
+                        }
+                    }
+                    if (wsData.length - start > 1 && value) {
+                        ws['!merges'].push({ s: { r: start, c: colIdx + 1 }, e: { r: wsData.length - 1, c: colIdx + 1 } });
+                    }
+                });
+
+                ws['!cols'] = [{ wch: 10 }];
+                columns.forEach(() => ws['!cols'].push({ wch: 15 }));
+
+                XLSX.utils.book_append_sheet(wb, ws, day.charAt(0).toUpperCase() + day.slice(1));
+            });
+
+            XLSX.writeFile(wb, 'planning_hebdomadaire.xlsx');
+        }
 
         document.getElementById('import-excel').addEventListener('change', handleExcelImportAllDays);
 
-
         function handleExcelImportAllDays(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const dayNames = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi'];
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const dayNames = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi'];
 
-        let changedDay = false;
-        dayNames.forEach(day => {
-            // Cherche la feuille correspondante (insensible à la casse)
-            const sheetName = workbook.SheetNames.find(n => n.trim().toLowerCase() === day);
-            if (!sheetName) return;
-            const sheet = workbook.Sheets[sheetName];
+                let changedDay = false;
+                dayNames.forEach(day => {
+                    const sheetName = workbook.SheetNames.find(n => n.trim().toLowerCase() === day);
+                    if (!sheetName) return;
+                    const sheet = workbook.Sheets[sheetName];
 
-            // On récupère les fusions éventuelles
-            const merges = sheet['!merges'] || [];
-
-            // On parse les données "classiquement"
-            const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-            // On va d'abord remplir normalement
-            for (let i = 1; i < rows.length; i++) { // Commence à 1 (skip header)
-                const row = rows[i];
-                const time = row[0];
-                if (!planningData[day][time]) continue; // Ignore heures non trouvées
-                for (let c = 0; c < columns.length; c++) {
-                    planningData[day][time][columns[c]] = row[c + 1] || '';
-                }
-            }
-
-            // Maintenant, on traite les merges
-            merges.forEach(merge => {
-                // merge.s: { r: startRow, c: startCol }
-                // merge.e: { r: endRow, c: endCol }
-                // Header = ligne 0, colonne 0
-                const startRow = merge.s.r, endRow = merge.e.r;
-                const startCol = merge.s.c, endCol = merge.e.c;
-                // La valeur fusionnée est dans la cellule de départ
-                const value = rows[startRow]?.[startCol] ?? '';
-                // Appliquer cette valeur à toutes les cases de la plage fusionnée
-                for (let r = startRow; r <= endRow; r++) {
-                    // Rappel : colonne 0 = heure, donc colonne 1 = colonne "A"
-                    const time = rows[r]?.[0];
-                    if (!planningData[day][time]) continue;
-                    for (let c = startCol; c <= endCol; c++) {
-                        if (c === 0) continue; // ne jamais écrire sur la colonne des heures
-                        planningData[day][time][columns[c - 1]] = value;
+                    const merges = sheet['!merges'] || [];
+                    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                    
+                    for (let i = 1; i < rows.length; i++) {
+                        const row = rows[i];
+                        const time = row[0];
+                        if (!planningData[day][time]) continue;
+                        for (let c = 0; c < columns.length; c++) {
+                            planningData[day][time][columns[c]] = row[c + 1] || '';
+                        }
                     }
+
+                    merges.forEach(merge => {
+                        const startRow = merge.s.r, endRow = merge.e.r;
+                        const startCol = merge.s.c, endCol = merge.e.c;
+                        const value = rows[startRow]?.[startCol] ?? '';
+                        
+                        for (let r = startRow; r <= endRow; r++) {
+                            const time = rows[r]?.[0];
+                            if (!planningData[day][time]) continue;
+                            for (let c = startCol; c <= endCol; c++) {
+                                if (c === 0) continue;
+                                planningData[day][time][columns[c - 1]] = value;
+                            }
+                        }
+                    });
+
+                    changedDay = true;
+                    createPlanningGrid(day);
+                });
+
+                if (changedDay) {
+                    alert("Importation terminée !");
+                } else {
+                    alert("Aucune feuille nommée 'lundi', 'mardi', etc. trouvée dans le fichier.");
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+        
+        function generateSynthesePersonneVolume() {
+            const slotDuration = 5;
+            const personMap = {};
+
+            days.forEach(day => {
+                timeSlots.forEach(time => {
+                    columns.forEach(col => {
+                        const value = planningData[day][time][col];
+                        if (value && value.trim() !== "") {
+                            const personName = getDisplayName(col);
+                            if (!personMap[personName]) personMap[personName] = {};
+                            if (!personMap[personName][value]) personMap[personName][value] = 0;
+                            personMap[personName][value] += 1;
+                        }
+                    });
+                });
+            });
+
+            const allPeople = Object.keys(personMap).sort();
+            const allItems = new Set();
+            Object.values(personMap).forEach(activities => {
+                Object.keys(activities).forEach(activity => allItems.add(activity));
+            });
+            const sortedItems = Array.from(allItems).sort();
+
+            let html = `<table class="table table-bordered"><thead><tr><th>Personne</th>`;
+            sortedItems.forEach(item => html += `<th>${item}</th>`);
+            html += `<th>Total</th></tr></thead><tbody>`;
+
+            allPeople.forEach(person => {
+                let totalMinutes = 0;
+                html += `<tr><td>${person}</td>`;
+                sortedItems.forEach(item => {
+                    const count = personMap[person][item] || 0;
+                    const minutes = count * slotDuration;
+                    totalMinutes += minutes;
+                    html += `<td>${minutes > 0 ? formatHM(minutes) : ""}</td>`;
+                });
+                html += `<td><b>${totalMinutes > 0 ? formatHM(totalMinutes) : ""}</b></td></tr>`;
+            });
+
+            html += `</tbody></table>`;
+            document.getElementById("synthese-table").innerHTML = html;
+        }
+
+        function formatHM(mins) {
+            if (mins <= 0) return "";
+            const h = Math.floor(mins / 60);
+            const m = mins % 60;
+            return h > 0 ? `${h}h${m > 0 ? m : ""}` : `${m}min`;
+        }
+
+        function generateSynthesePersonneParJour() {
+            const slotDuration = 5;
+            const personDayMap = {};
+
+            days.forEach(day => {
+                timeSlots.forEach(time => {
+                    columns.forEach(col => {
+                        const value = planningData[day][time][col];
+                        if (value && value.trim() !== "") {
+                            const personName = getDisplayName(col);
+                            if (!personDayMap[personName]) personDayMap[personName] = {};
+                            if (!personDayMap[personName][day]) personDayMap[personName][day] = 0;
+                            personDayMap[personName][day] += 1;
+                        }
+                    });
+                });
+            });
+
+            const allPeople = Object.keys(personDayMap).sort();
+
+            let html = `<table class="table table-bordered"><thead><tr><th>Personne</th>`;
+            days.forEach(day => html += `<th>${day.charAt(0).toUpperCase() + day.slice(1)}</th>`);
+            html += `<th>Total</th></tr></thead><tbody>`;
+
+            allPeople.forEach(person => {
+                let total = 0;
+                html += `<tr><td>${person}</td>`;
+                days.forEach(day => {
+                    const count = (personDayMap[person][day] || 0);
+                    const minutes = count * slotDuration;
+                    total += minutes;
+                    html += `<td>${minutes > 0 ? formatHM(minutes) : ""}</td>`;
+                });
+                html += `<td><b>${total > 0 ? formatHM(total) : ""}</b></td></tr>`;
+            });
+
+            html += `</tbody></table>`;
+            document.getElementById("syntheseJour-table").innerHTML = html;
+        }
+
+        // === FONCTIONS PDF ===
+        function generatePDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('l', 'pt', 'a4');
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const pageHeight = doc.internal.pageSize.getHeight();
+
+            let isFirstPage = true;
+
+            days.forEach((day, dayIndex) => {
+                if (!isFirstPage) {
+                    doc.addPage();
+                }
+                isFirstPage = false;
+
+                doc.setFontSize(16);
+                doc.setFont('helvetica', 'bold');
+                doc.text(day.charAt(0).toUpperCase() + day.slice(1), pageWidth / 2, 30, { align: "center" });
+
+                const relevantSlots = timeSlots.filter(time => {
+                    return columns.some(col => {
+                        const value = planningData[day][time][col];
+                        return value && value.trim() !== '';
+                    });
+                });
+
+                if (relevantSlots.length === 0) {
+                    doc.setFontSize(12);
+                    doc.setFont('helvetica', 'normal');
+                    doc.text("Aucune donnée pour ce jour", pageWidth / 2, pageHeight / 2, { align: "center" });
+                    return;
+                }
+
+                const mergeInfo = analyzeMerges(day, relevantSlots);
+                const startY = 50;
+                const availableHeight = pageHeight - startY - 20;
+                const availableWidth = pageWidth - 40;
+                const totalRows = relevantSlots.length + 1;
+                const minRowHeight = 12;
+                const rowHeight = Math.max(minRowHeight, Math.floor(availableHeight / totalRows));
+                const fontSize = Math.max(6, Math.min(10, rowHeight - 2));
+                const timeColWidth = 60;
+                const dataColWidth = (availableWidth - timeColWidth) / columns.length;
+                const totalTableHeight = totalRows * rowHeight;
+
+                if (totalTableHeight > availableHeight) {
+                    drawPlanningTableWithPagination(doc, day, relevantSlots, mergeInfo, startY, timeColWidth, dataColWidth, minRowHeight, fontSize, availableHeight, pageWidth, pageHeight);
+                } else {
+                    drawPlanningTableWithMerges(doc, day, relevantSlots, mergeInfo, startY, timeColWidth, dataColWidth, rowHeight, fontSize);
                 }
             });
 
-            changedDay = true;
-            createPlanningGrid(day);
-        });
-
-        if (changedDay) {
-            alert("Importation terminée !");
-        } else {
-            alert("Aucune feuille nommée 'lundi', 'mardi', etc. trouvée dans le fichier.");
+            doc.save('planning_hebdomadaire.pdf');
         }
-    };
-    reader.readAsArrayBuffer(file);
-}
-function generateSynthesePersonneVolume() {
-    // Durée d'un créneau en minutes (à ADAPTER selon ton planning)
-    const slotDuration = 5; // change à 15 si besoin
-    // Création du mapping personne -> item -> nbre de créneaux
-    const personMap = {};
-    const itemMap = {};
 
-    days.forEach(day => {
-        timeSlots.forEach(time => {
-            columns.forEach(col => {
-                const value = planningData[day][time][col];
-                if (value && value.trim() !== "") {
-                    if (!personMap[col]) personMap[col] = {};
-                    if (!personMap[col][value]) personMap[col][value] = 0;
-                    personMap[col][value] += 1;
-                   // Mise à jour de itemMap
-                if (!itemMap[value]) itemMap[value] = [];
-                // On cherche si la personne existe déjà pour ce value dans itemMap
-                let personEntry = itemMap[value].find(entry => entry.col === col);
-                if (personEntry) {
-                    personEntry.nbre += 1;
-                } else {
-                    itemMap[value].push({ col, nbre: 1 });
-                }
-            }
-        });
-    });
-});
-
-    // Liste des personnes triées
-    const allPeople = Object.keys(personMap).sort();
-    // Liste des items (postes)
-    const allItems = Object.keys(itemMap).sort();;
-
-    // Construction du tableau HTML
-    let html = `<table class="table table-bordered"><thead><tr><th>Personne</th>`;
-    allItems.forEach(item => html += `<th>${item}</th>`);
-    html += `<th>Total</th></tr></thead><tbody>`;
-
-    allPeople.forEach(person => {
-        let totalMinutes = 0;
-        html += `<tr><td>${person}</td>`;
-        allItems.forEach(item => {
-            const count = personMap[person][item] || 0;
-            const minutes = count * slotDuration;
-            totalMinutes += minutes;
+        function drawPlanningTableWithMerges(doc, day, relevantSlots, mergeInfo, startY, timeColWidth, dataColWidth, rowHeight, fontSize) {
+            let currentY = startY;
             
-             const idCell = `id="${person.replace(/\s/g,'_')}+${item.replace(/\s/g,'_')}"`;
-        html += `<td ${idCell}>${minutes > 0 ? formatHM(minutes) : ""}</td>`;
-        });
-        html += `<td><b>${totalMinutes > 0 ? formatHM(totalMinutes) : ""}</b></td></tr>`;
-    });
+            // En-tête
+            doc.setFillColor(102, 126, 234);
+            doc.rect(20, currentY, timeColWidth, rowHeight, 'F');
 
-    html += `</tbody></table>`;
-    document.getElementById("synthese-table").innerHTML = html;
-    colorerSyntheseParItem(); // <-- Ajout ici
-}
-
-// Format X min => HhMMmin
-function formatHM(mins) {
-    if (mins <= 0) return "";
-    const h = Math.floor(mins / 60);
-    const m = mins % 60;
-    return h > 0 ? `${h}h${m > 0 ? m : ""}` : `${m}min`;
-}
-
-// Helper : minutes → format "XhYY" ou "ZZ min"
-function formatDuree(minutes) {
-    if (minutes >= 60) {
-        const h = Math.floor(minutes / 60);
-        const m = minutes % 60;
-        return h + 'h' + (m ? (m < 10 ? '0' : '') + m : '');
-    }
-    return minutes + ' min';
-}
-function generateSynthesePersonneParJour() {
-    const slotDuration = 5; // ou 15 si tu utilises 15 minutes
-    const personDayMap = {}; // { personne: { lundi: n, mardi: n, ... } }
-
-    days.forEach(day => {
-        timeSlots.forEach(time => {
-            columns.forEach(col => {
-                const value = planningData[day][time][col];
-                if (value && value.trim() !== "") {
-                    if (!personDayMap[col]) personDayMap[col] = {};
-                    if (!personDayMap[col][day]) personDayMap[col][day] = 0;
-                    personDayMap[col][day] += 1;
-                }
+            columns.forEach((col, index) => {
+                const x = 20 + timeColWidth + (index * dataColWidth);
+                doc.rect(x, currentY, dataColWidth, rowHeight, 'F');
             });
-        });
-    });
 
-    // Liste personnes triées
-    const allPeople = Object.keys(personDayMap).sort();
+            doc.setTextColor(255, 255, 255);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(fontSize + 1);
 
-    // Construction du tableau HTML
-    let html = `<table class="table table-bordered"><thead><tr><th>Personne</th>`;
-    days.forEach(day => html += `<th>${day.charAt(0).toUpperCase() + day.slice(1)}</th>`);
-    html += `<th>Total</th></tr></thead><tbody>`;
+            doc.text('Heure', 20 + timeColWidth/2, currentY + rowHeight/2 + 2, { align: 'center' });
 
-    allPeople.forEach(person => {
-        let total = 0;
-        html += `<tr><td>${person}</td>`;
-        days.forEach(day => {
-            const count = (personDayMap[person][day] || 0);
-            const minutes = count * slotDuration;
-            total += minutes;
-            html += `<td>${minutes > 0 ? formatHM(minutes) : ""}</td>`;
-        });
-        html += `<td><b>${total > 0 ? formatHM(total) : ""}</b></td></tr>`;
-    });
-
-    html += `</tbody></table>`;
-    document.getElementById("syntheseJour-table").innerHTML = html;
-}
-function colorerSyntheseParItem() {
-    const table = document.querySelector('#synthese-table table');
-    if (!table) return;
-    const rows = Array.from(table.querySelectorAll('tbody tr'));
-    if (rows.length === 0) return;
-
-    // Récupère les items (postes) depuis l'en-tête
-    const ths = Array.from(table.querySelectorAll('thead th'));
-    const items = ths.slice(1, -1).map(th => th.textContent.trim()); // Ignore "Personne" et "Total"
-
-    // Trouve les index des colonnes à exclure (F et G)
-    const excludeColsLabels = ['F', 'G'];
-    const excludeIndexes = [];
-    items.forEach((item, idx) => {
-        if (excludeColsLabels.includes(item)) excludeIndexes.push(idx);
-    });
-
-    // Calcule la moyenne pour chaque poste (sauf F et G)
-    let moyennes = [];
-    items.forEach((item, colIdx) => {
-        if (excludeIndexes.includes(colIdx)) {
-            moyennes[colIdx] = null; // On ne calcule pas la moyenne pour F et G
-            return;
-        }
-        let total = 0, count = 0;
-        rows.forEach(row => {
-            const cell = row.querySelectorAll('td')[colIdx + 1];
-            if (!cell) return;
-            let minutes = 0;
-            let m = cell.textContent.match(/(\d+)h(\d+)?/);
-            if (m) {
-                minutes = parseInt(m[1]) * 60 + (m[2] ? parseInt(m[2]) : 0);
-            } else {
-                let m2 = cell.textContent.match(/(\d+)min/);
-                if (m2) minutes = parseInt(m2[1]);
-            }
-            if (minutes > 0) {
-                total += minutes;
-                count++;
-            }
-        });
-        moyennes[colIdx] = count ? total / count : 0;
-    });
-
-    // Applique les couleurs si l'écart dépasse ±60 min (sauf F et G)
-    rows.forEach(row => {
-        const cells = row.querySelectorAll('td');
-        items.forEach((item, colIdx) => {
-            if (excludeIndexes.includes(colIdx)) {
-                // Pas de couleur sur F et G, mais on nettoie le style
-                const cell = cells[colIdx + 1];
-                if (cell) {
-                    cell.style.backgroundColor = '';
-                    cell.style.fontWeight = '';
-                }
-                return;
-            }
-            const cell = cells[colIdx + 1];
-            if (!cell) return;
-            let minutes = 0;
-            let m = cell.textContent.match(/(\d+)h(\d+)?/);
-            if (m) {
-                minutes = parseInt(m[1]) * 60 + (m[2] ? parseInt(m[2]) : 0);
-            } else {
-                let m2 = cell.textContent.match(/(\d+)min/);
-                if (m2) minutes = parseInt(m2[1]);
-            }
-            let moyenne = moyennes[colIdx] || 0;
-            let color = '';
-            let ecart = minutes - moyenne;
-            if (minutes > 0 && Math.abs(ecart) > 60) {
-                if (ecart > 60) {
-                    // Violet, intensité selon l'écart positif
-                    let intensite = Math.min((ecart - 60) / (moyenne || 1), 1);
-                    color = `rgba(138, 43, 226, ${0.3 + 0.7 * intensite})`;
-                } else if (ecart < -60) {
-                    // Orange, intensité selon l'écart négatif
-                    let intensite = Math.min((-ecart - 60) / (moyenne || 1), 1);
-                    color = `rgba(255, 140, 0, ${0.3 + 0.7 * intensite})`;
-                }
-                cell.style.backgroundColor = color;
-                cell.style.fontWeight = "bold";
-            } else {
-                cell.style.backgroundColor = '';
-                cell.style.fontWeight = '';
-            }
-        });
-    });
-}
-function generatePDF() {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF('l', 'pt', 'a4');
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-
-    let isFirstPage = true;
-
-    days.forEach((day, dayIndex) => {
-        if (!isFirstPage) {
-            doc.addPage();
-        }
-        isFirstPage = false;
-
-        // Titre du jour
-        doc.setFontSize(16);
-        doc.setFont('helvetica', 'bold');
-        doc.text(day.charAt(0).toUpperCase() + day.slice(1), pageWidth / 2, 30, { align: "center" });
-
-        const relevantSlots = timeSlots.filter(time => {
-            return columns.some(col => {
-                const value = planningData[day][time][col];
-                return value && value.trim() !== '';
+            columns.forEach((col, index) => {
+                const x = 20 + timeColWidth + (index * dataColWidth);
+                const displayName = getDisplayName(col);
+                const truncatedName = truncateText(doc, displayName, dataColWidth - 4, fontSize + 1);
+                doc.text(truncatedName, x + dataColWidth/2, currentY + rowHeight/2 + 2, { align: 'center' });
             });
-        });
 
-        if (relevantSlots.length === 0) {
-            doc.setFontSize(12);
-            doc.setFont('helvetica', 'normal');
-            doc.text("Aucune donnée pour ce jour", pageWidth / 2, pageHeight / 2, { align: "center" });
-            return;
-        }
+            currentY += rowHeight;
 
-        const mergeInfo = analyzeMerges(day, relevantSlots);
-        const startY = 50;
-        const availableHeight = pageHeight - startY - 20;
-        const availableWidth = pageWidth - 40;
-        const totalRows = relevantSlots.length + 1;
-        const minRowHeight = 12;
-        const rowHeight = Math.max(minRowHeight, Math.floor(availableHeight / totalRows));
-        const fontSize = Math.max(6, Math.min(10, rowHeight - 2));
-        const timeColWidth = 60;
-        const dataColWidth = (availableWidth - timeColWidth) / columns.length;
-        const totalTableHeight = totalRows * rowHeight;
-
-        if (totalTableHeight > availableHeight) {
-            drawPlanningTableWithPaginationCustomNames(doc, day, relevantSlots, mergeInfo, startY, timeColWidth, dataColWidth, minRowHeight, fontSize, availableHeight, pageWidth, pageHeight);
-        } else {
-            drawPlanningTableWithMergesCustomNames(doc, day, relevantSlots, mergeInfo, startY, timeColWidth, dataColWidth, rowHeight, fontSize);
-        }
-    });
-
-    doc.save('planning_hebdomadaire.pdf');
-}
-
-function drawPlanningTableWithMergesCustomNames(doc, day, relevantSlots, mergeInfo, startY, timeColWidth, dataColWidth, rowHeight, fontSize) {
-    let currentY = startY;
-    
-    // Dessiner l'en-tête
-    doc.setFillColor(102, 126, 234);
-    doc.rect(20, currentY, timeColWidth, rowHeight, 'F');
-
-    columns.forEach((col, index) => {
-        const x = 20 + timeColWidth + (index * dataColWidth);
-        doc.rect(x, currentY, dataColWidth, rowHeight, 'F');
-    });
-
-    // Texte de l'en-tête avec noms personnalisés
-    doc.setTextColor(255, 255, 255);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(fontSize + 1);
-
-    doc.text('Heure', 20 + timeColWidth/2, currentY + rowHeight/2 + 2, { align: 'center' });
-
-    columns.forEach((col, index) => {
-        const x = 20 + timeColWidth + (index * dataColWidth);
-        const displayName = getDisplayName(col);
-        const truncatedName = truncateText(doc, displayName, dataColWidth - 4, fontSize + 1);
-        doc.text(truncatedName, x + dataColWidth/2, currentY + rowHeight/2 + 2, { align: 'center' });
-    });
-
-    currentY += rowHeight;
-
-    // Le reste de la fonction reste identique à l'original
-    // (copiez le reste du code de drawPlanningTableWithMerges ici)
-    
-    // Dessiner d'abord tous les arrière-plans des cellules fusionnées
-    relevantSlots.forEach((time, rowIndex) => {
-        columns.forEach((col, colIndex) => {
-            const merge = mergeInfo[col][rowIndex];
-            const x = 20 + timeColWidth + (colIndex * dataColWidth);
-            const y = startY + rowHeight + (rowIndex * rowHeight);
-
-            if (merge && merge.value && merge.isFirst) {
-                const color = getActivityColorRGB(merge.value);
-                if (color) {
-                    const mergeHeight = rowHeight * merge.mergeLength;
-                    doc.setFillColor(color.r, color.g, color.b);
-                    doc.rect(x, y, dataColWidth, mergeHeight, 'F');
-                }
-            }
-        });
-    });
-
-    // Dessiner les lignes de données
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(fontSize);
-
-    relevantSlots.forEach((time, rowIndex) => {
-        const y = startY + rowHeight + (rowIndex * rowHeight);
-
-        if (rowIndex % 2 === 0) {
-            doc.setFillColor(248, 249, 250);
-            doc.rect(20, y, timeColWidth, rowHeight, 'F');
-        }
-
-        doc.setTextColor(0, 0, 0);
-        doc.setFont('helvetica', 'bold');
-        doc.text(time, 20 + timeColWidth/2, y + rowHeight/2 + 2, { align: 'center' });
-
-        doc.setFont('helvetica', 'bold');
-        columns.forEach((col, colIndex) => {
-            const merge = mergeInfo[col][rowIndex];
-            const x = 20 + timeColWidth + (colIndex * dataColWidth);
-
-            if (merge && merge.value) {
-                const color = getActivityColorRGB(merge.value);
-                if (color) {
-                    doc.setTextColor(255, 255, 255);
-                } else {
-                    doc.setTextColor(0, 0, 0);
-                }
-
-                if (merge.isFirst) {
-                    const maxWidth = dataColWidth - 4;
-                    const truncatedText = truncateText(doc, merge.value, maxWidth, fontSize);
-                    const textY = y + (rowHeight * merge.mergeLength) / 2 + 2;
-                    doc.text(truncatedText, x + dataColWidth/2, textY, { align: 'center' });
-                }
-            }
-        });
-    });
-
-    // Dessiner les bordures du tableau
-    doc.setDrawColor(0, 0, 0);
-    doc.setLineWidth(0.5);
-
-    const tableWidth = timeColWidth + (columns.length * dataColWidth);
-    const tableHeight = (relevantSlots.length + 1) * rowHeight;
-    doc.rect(20, startY, tableWidth, tableHeight);
-
-    doc.line(20 + timeColWidth, startY, 20 + timeColWidth, startY + tableHeight);
-    for (let i = 1; i < columns.length; i++) {
-        const x = 20 + timeColWidth + (i * dataColWidth);
-        doc.line(x, startY, x, startY + tableHeight);
-    }
-
-    for (let i = 1; i <= relevantSlots.length; i++) {
-        const y = startY + (i * rowHeight);
-        if (i === 1) {
-            doc.line(20, y, 20 + tableWidth, y);
-        } else {
-            doc.line(20, y, 20 + timeColWidth, y);
-            columns.forEach((col, colIndex) => {
-                const rowIndex = i - 2;
-                if (rowIndex >= 0 && rowIndex < relevantSlots.length) {
+            // Arrière-plans des cellules fusionnées
+            relevantSlots.forEach((time, rowIndex) => {
+                columns.forEach((col, colIndex) => {
                     const merge = mergeInfo[col][rowIndex];
                     const x = 20 + timeColWidth + (colIndex * dataColWidth);
-                    if (!merge || !merge.isMerged || merge.isLast) {
-                        doc.line(x, y, x + dataColWidth, y);
+                    const y = startY + rowHeight + (rowIndex * rowHeight);
+
+                    if (merge && merge.value && merge.isFirst) {
+                        const color = getActivityColorRGB(merge.value);
+                        if (color) {
+                            const mergeHeight = rowHeight * merge.mergeLength;
+                            doc.setFillColor(color.r, color.g, color.b);
+                            doc.rect(x, y, dataColWidth, mergeHeight, 'F');
+                        }
                     }
-                } else if (i === relevantSlots.length + 1) {
-                    const x = 20 + timeColWidth + (colIndex * dataColWidth);
-                    doc.line(x, y, x + dataColWidth, y);
-                }
+                });
             });
-        }
-    }
-}
 
-function drawPlanningTableWithPaginationCustomNames(doc, day, relevantSlots, mergeInfo, startY, timeColWidth, dataColWidth, minRowHeight, fontSize, availableHeight, pageWidth, pageHeight) {
-    // Cette fonction utilise la même logique que drawOptimizedPlanningWithPagination
-    // mais appelle drawPlanningTableWithMergesCustomNames au lieu de drawPlanningTableWithMerges
-    
-    const headerHeight = minRowHeight;
-    const totalSlots = relevantSlots.length;
-    const midPoint = Math.ceil(totalSlots / 2);
-    
-    const firstPageSlots = relevantSlots.slice(0, midPoint);
-    const firstPageMergeInfo = createPageMergeInfo(day, firstPageSlots, mergeInfo, 0);
-    const firstPageRowHeight = Math.max(12, Math.floor(availableHeight / (firstPageSlots.length + 1)));
-    const firstPageFontSize = Math.max(6, Math.min(10, firstPageRowHeight - 2));
-    
-    drawPlanningTableWithMergesCustomNames(doc, day, firstPageSlots, firstPageMergeInfo, startY, timeColWidth, dataColWidth, firstPageRowHeight, firstPageFontSize);
-    
-    if (totalSlots > midPoint) {
-        doc.addPage();
-        doc.setFontSize(16);
-        doc.setFont('helvetica', 'bold');
-        doc.text(`${day.charAt(0).toUpperCase() + day.slice(1)} (2/2)`, pageWidth / 2, 30, { align: "center" });
-        
-        const secondPageSlots = relevantSlots.slice(midPoint);
-        const secondPageMergeInfo = createPageMergeInfo(day, secondPageSlots, mergeInfo, midPoint);
-        const secondPageRowHeight = Math.max(12, Math.floor(availableHeight / (secondPageSlots.length + 1)));
-        const secondPageFontSize = Math.max(6, Math.min(10, secondPageRowHeight - 2));
-        
-        drawPlanningTableWithMergesCustomNames(doc, day, secondPageSlots, secondPageMergeInfo, startY, timeColWidth, dataColWidth, secondPageRowHeight, secondPageFontSize);
-    }
-}
-        
+            // Lignes de données
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(fontSize);
 
-function drawOptimizedPlanningWithPagination (doc, day, relevantSlots, mergeInfo, startY, timeColWidth, dataColWidth, rowHeight, fontSize, availableHeight, pageWidth, pageHeight) {
-    const headerHeight = rowHeight;
-    const maxRowsPerPage = Math.floor((availableHeight - headerHeight) / rowHeight);
-    
-    // Forcer la division en 2 pages maximum
-    const totalSlots = relevantSlots.length;
-    const midPoint = Math.ceil(totalSlots / 2);
-    
-    // Première page
-    const firstPageSlots = relevantSlots.slice(0, midPoint);
-    const firstPageMergeInfo = createPageMergeInfo(day, firstPageSlots, mergeInfo, 0);
-    
-    // Calculer la hauteur optimale pour la première page
-    const firstPageRowHeight = Math.max(12, Math.floor(availableHeight / (firstPageSlots.length + 1)));
-    const firstPageFontSize = Math.max(6, Math.min(10, firstPageRowHeight - 2));
-    
-    drawPlanningTableWithMerges(doc, day, firstPageSlots, firstPageMergeInfo, startY, timeColWidth, dataColWidth, firstPageRowHeight, firstPageFontSize);
-    
-    // Deuxième page si nécessaire
-    if (totalSlots > midPoint) {
-        doc.addPage();
-        
-        // Titre de la deuxième page
-        doc.setFontSize(16);
-        doc.setFont('helvetica', 'bold');
-        doc.text(`${day.charAt(0).toUpperCase() + day.slice(1)} (2/2)`, pageWidth / 2, 30, { align: "center" });
-        
-        const secondPageSlots = relevantSlots.slice(midPoint);
-        const secondPageMergeInfo = createPageMergeInfo(day, secondPageSlots, mergeInfo, midPoint);
-        
-        // Calculer la hauteur optimale pour la deuxième page
-        const secondPageRowHeight = Math.max(12, Math.floor(availableHeight / (secondPageSlots.length + 1)));
-        const secondPageFontSize = Math.max(6, Math.min(10, secondPageRowHeight - 2));
-        
-        drawPlanningTableWithMerges(doc, day, secondPageSlots, secondPageMergeInfo, startY, timeColWidth, dataColWidth, secondPageRowHeight, secondPageFontSize);
-    }
-}
+            relevantSlots.forEach((time, rowIndex) => {
+                const y = startY + rowHeight + (rowIndex * rowHeight);
 
-
-function createPageMergeInfo(day, pageSlots, originalMergeInfo, startIndex) {
-    const pageMergeInfo = {};
-    
-    columns.forEach(col => {
-        pageMergeInfo[col] = [];
-        
-        pageSlots.forEach((time, pageIndex) => {
-            const originalIndex = startIndex + pageIndex;
-            
-            if (originalIndex < originalMergeInfo[col].length) {
-                const originalMerge = originalMergeInfo[col][originalIndex];
-                
-                if (originalMerge && originalMerge.value) {
-                    const originalStartRow = originalMerge.startRow;
-                    const originalEndRow = originalStartRow + originalMerge.mergeLength - 1;
-                    
-                    // Calculer les limites visibles sur cette page
-                    const pageStartIndex = startIndex;
-                    const pageEndIndex = startIndex + pageSlots.length - 1;
-                    
-                    const visibleStart = Math.max(originalStartRow, pageStartIndex);
-                    const visibleEnd = Math.min(originalEndRow, pageEndIndex);
-                    
-                    if (originalIndex >= visibleStart && originalIndex <= visibleEnd) {
-                        pageMergeInfo[col][pageIndex] = {
-                            isFirst: originalIndex === visibleStart,
-                            isLast: originalIndex === visibleEnd,
-                            mergeLength: visibleEnd - visibleStart + 1,
-                            value: originalMerge.value,
-                            startRow: visibleStart - startIndex,
-                            isMerged: originalMerge.isMerged
-                        };
-                    }
-                } else {
-                    pageMergeInfo[col][pageIndex] = {
-                        isFirst: true,
-                        isLast: true,
-                        mergeLength: 1,
-                        value: '',
-                        startRow: pageIndex,
-                        isMerged: false
-                    };
+                if (rowIndex % 2 === 0) {
+                    doc.setFillColor(248, 249, 250);
+                    doc.rect(20, y, timeColWidth, rowHeight, 'F');
                 }
-            }
-        });
-    });
-    
-    return pageMergeInfo;
-}
 
-
-function analyzeMerges(day, relevantSlots) {
-
-const mergeInfo = {};
-
-columns.forEach(col => {
-
-mergeInfo[col] = [];
-
-let i = 0;
-
-
-while (i < relevantSlots.length) {
-
-const currentTime = relevantSlots[i];
-
-const currentValue = planningData[day][currentTime][col];
-
-
-if (currentValue && currentValue.trim() !== '') {
-
-let mergeLength = 1;
-
-
-// Compter les créneaux consécutifs avec la même valeur
-
-while (i + mergeLength < relevantSlots.length) {
-
-const nextTime = relevantSlots[i + mergeLength];
-
-const nextValue = planningData[day][nextTime][col];
-
-
-if (nextValue === currentValue) {
-
-mergeLength++;
-
-} else {
-
-break;
-
-}
-
-}
-
-
-// Enregistrer les infos de fusion
-
-for (let j = 0; j < mergeLength; j++) {
-
-mergeInfo[col][i + j] = {
-
-isFirst: j === 0,
-
-isLast: j === mergeLength - 1,
-
-mergeLength: mergeLength,
-
-value: currentValue,
-
-startRow: i,
-
-isMerged: mergeLength > 1
-
-};
-
-}
-
-
-i += mergeLength;
-
-} else {
-
-mergeInfo[col][i] = {
-
-isFirst: true,
-
-isLast: true,
-
-mergeLength: 1,
-
-value: '',
-
-startRow: i,
-
-isMerged: false
-
-};
-
-i++;
-
-}
-}
-
-});
-
-return mergeInfo;
-
-}
-
-function drawPlanningTableWithMerges(doc, day, relevantSlots, mergeInfo, startY, timeColWidth, dataColWidth, rowHeight, fontSize) {
-
-let currentY = startY;
-// Dessiner l'en-tête
-
-doc.setFillColor(102, 126, 234); // Couleur de fond bleu
-
-doc.rect(20, currentY, timeColWidth, rowHeight, 'F');
-
-
-columns.forEach((col, index) => {
-
-const x = 20 + timeColWidth + (index * dataColWidth);
-
-doc.rect(x, currentY, dataColWidth, rowHeight, 'F');
-
-});
-
-
-// Texte de l'en-tête
-
-doc.setTextColor(255, 255, 255); // Blanc
-
-doc.setFont('helvetica', 'bold');
-
-doc.setFontSize(fontSize + 1);
-
-
-doc.text('Heure', 20 + timeColWidth/2, currentY + rowHeight/2 + 2, { align: 'center' });
-
-
-columns.forEach((col, index) => {
-
-const x = 20 + timeColWidth + (index * dataColWidth);
-
-doc.text(col, x + dataColWidth/2, currentY + rowHeight/2 + 2, { align: 'center' });
-
-});
-
-
-currentY += rowHeight;
-
-
-// Dessiner d'abord tous les arrière-plans des cellules fusionnées
-
-relevantSlots.forEach((time, rowIndex) => {
-
-columns.forEach((col, colIndex) => {
-
-const merge = mergeInfo[col][rowIndex];
-
-const x = 20 + timeColWidth + (colIndex * dataColWidth);
-
-const y = startY + rowHeight + (rowIndex * rowHeight);
-
-
-if (merge && merge.value && merge.isFirst) {
-
-// Appliquer la couleur de fond selon l'activité
-
-const color = getActivityColorRGB(merge.value);
-
-if (color) {
-
-const mergeHeight = rowHeight * merge.mergeLength;
-
-doc.setFillColor(color.r, color.g, color.b);
-
-doc.rect(x, y, dataColWidth, mergeHeight, 'F');
-
-}
-
-}
-
-});
-
-});
-
-
-// Dessiner les lignes de données
-
-doc.setFont('helvetica', 'normal');
-
-doc.setFontSize(fontSize);
-
-
-relevantSlots.forEach((time, rowIndex) => {
-
-const y = startY + rowHeight + (rowIndex * rowHeight);
-
-
-// Fond alternant pour la lisibilité (seulement pour la colonne heure)
-
-if (rowIndex % 2 === 0) {
-
-doc.setFillColor(248, 249, 250);
-
-doc.rect(20, y, timeColWidth, rowHeight, 'F');
-
-}
-
-
-// Colonne heure
-
-doc.setTextColor(0, 0, 0);
-
-doc.setFont('helvetica', 'bold');
-
-doc.text(time, 20 + timeColWidth/2, y + rowHeight/2 + 2, { align: 'center' });
-
-
-// Colonnes de données avec fusion
-
-doc.setFont('helvetica', 'bold');
-
-columns.forEach((col, colIndex) => {
-
-const merge = mergeInfo[col][rowIndex];
-
-const x = 20 + timeColWidth + (colIndex * dataColWidth);
-
-
-if (merge && merge.value) {
-
-// Définir la couleur du texte
-
-const color = getActivityColorRGB(merge.value);
-
-if (color) {
-
-doc.setTextColor(255, 255, 255); // Texte blanc sur fond coloré
-
-} else {
-
-doc.setTextColor(0, 0, 0); // Texte noir
-
-}
-
-
-// Afficher le texte seulement sur la première cellule de la fusion
-
-if (merge.isFirst) {
-
-const maxWidth = dataColWidth - 4;
-
-const truncatedText = truncateText(doc, merge.value, maxWidth, fontSize);
-
-const textY = y + (rowHeight * merge.mergeLength) / 2 + 2;
-
-doc.text(truncatedText, x + dataColWidth/2, textY, { align: 'center' });
-
-}
-
-}
-
-});
-
-});
-
-
-// Dessiner les bordures du tableau
-
-doc.setDrawColor(0, 0, 0);
-
-doc.setLineWidth(0.5);
-
-
-// Bordures extérieures
-
-const tableWidth = timeColWidth + (columns.length * dataColWidth);
-
-const tableHeight = (relevantSlots.length + 1) * rowHeight;
-
-doc.rect(20, startY, tableWidth, tableHeight);
-
-
-// Lignes verticales
-
-doc.line(20 + timeColWidth, startY, 20 + timeColWidth, startY + tableHeight);
-
-for (let i = 1; i < columns.length; i++) {
-
-const x = 20 + timeColWidth + (i * dataColWidth);
-
-doc.line(x, startY, x, startY + tableHeight);
-
-}
-
-
-// Lignes horizontales
-
-for (let i = 1; i <= relevantSlots.length; i++) {
-
-const y = startY + (i * rowHeight);
-
-
-// Ligne complète pour séparer les en-têtes
-
-if (i === 1) {
-
-doc.line(20, y, 20 + tableWidth, y);
-
-} else {
-
-// Ligne pour la colonne heure
-
-doc.line(20, y, 20 + timeColWidth, y);
-
-
-// Lignes pour chaque colonne de données (en évitant les zones fusionnées)
-
-columns.forEach((col, colIndex) => {
-
-const rowIndex = i - 2; // -1 pour l'en-tête, -1 pour l'index
-
-if (rowIndex >= 0 && rowIndex < relevantSlots.length) {
-
-const merge = mergeInfo[col][rowIndex];
-
-const x = 20 + timeColWidth + (colIndex * dataColWidth);
-
-
-// Dessiner la ligne seulement si c'est la dernière cellule d'une fusion ou pas de fusion
-
-if (!merge || !merge.isMerged || merge.isLast) {
-
-doc.line(x, y, x + dataColWidth, y);
-
-}
-
-} else if (i === relevantSlots.length + 1) {
-
-// Dernière ligne du tableau
-
-const x = 20 + timeColWidth + (colIndex * dataColWidth);
-
-doc.line(x, y, x + dataColWidth, y);
-
-}
-
-});
-
-}
-
-}
-
-}
-
-
-// Gardez les autres fonctions inchangées
-
-function getActivityColorRGB(value) {
-
-const hex = getActivityColor(value);
-
-if (!hex) return null;
-
-
-
-
-return {
-
-r: parseInt(hex.substr(1, 2), 16),
-
-g: parseInt(hex.substr(3, 2), 16),
-
-b: parseInt(hex.substr(5, 2), 16)
-
-};
-
-
-
-
-}
-
-
-function truncateText(doc, text, maxWidth, fontSize) {
-
-doc.setFontSize(fontSize);
-
-const textWidth = doc.getTextWidth(text);
-
-
-
-
-if (textWidth <= maxWidth) {
-
-return text;
-
-}
-
-
-// Couper le texte et ajouter "..."
-
-let truncated = text;
-
-while (doc.getTextWidth(truncated + "...") > maxWidth && truncated.length > 0) {
-
-truncated = truncated.slice(0, -1);
-
-}
-
-
-return truncated + "...";
-
-
-
-
-}
-
-
-function getActivityColor(value) {
-
-if (!value) return null;
-
-let key = value.toLowerCase()
-
-.replace(/\s+/g, '-')
-
-.replace('renfort-surveillance', 'renfort')
-
-.replace('réfectoire', 'refectoire');
-
-const activityColors = {
-
-'bvs1': '#e91e63',
-
-'bvs2': '#ff9800',
-
-'portail': '#ff5722',
-
-'voltige': '#2196f3',
-
-'renfort': '#795548',
-
-'cours-impaire': '#4caf50',
-
-'cours-paire': '#8bc34a',
-
-'etude-impaire': '#9c27b0',
-
-'etude-paire': '#673ab7',
-
-'ap': '#009688',
-
-'hall': '#607d8b',
-
-'refectoire': '#ff6f00',
-
-'turbo': '#f44336',
-
-'bureau-midi': '#3f51b5',
-
-'pause': '#9e9e9e',
-
-'marsons': '#00bcd4'
-
-};
-
-return activityColors[key] || null;
-
-}
-        document.addEventListener('DOMContentLoaded', function() {
-    initializePlannings();
-    initializeNames();
-});
-    </script>
+                doc.setTextColor(0, 0, 0);
+                doc.setFont('helvetica', 'bold');
+                doc.text(time, 20 + timeColWidth/2, y + rowHeight/2 + 2, { align: 'center' });
+
+                doc.setFont('helvetica', 'bold');
+                columns.forEach((col, colIndex) => {
+                    const merge = mergeInfo[col][rowIndex];
+                    const x = 20 + timeColWidth + (colIndex * dataColWidth);
+
+                    if (merge && merge.value) {
+                        const color = getActivityColorRGB(merge.value);
+                        if (color) {
+                            doc.setTextColor(255, 255, 255);
+                        } else {
+                            doc.setTextColor(0, 0, 0);
+                        }
+
+                        if (merge.isFirst) {
+                            const maxWidth = dataColWidth - 4;
+                            const truncatedText = truncateText(doc, merge.value, maxWidth, fontSize);
+                            const textY = y + (rowHeight * merge.mergeLength) / 2 + 2;
+                            doc.text(truncatedText, x + dataColWidth/2, textY, { align: 'center' });
+                        }
+                    }
+                });
+            });
+
+            // Bordures
+            doc.setDrawColor(0, 0, 0);
+            doc.setLineWidth(0.5);
+
+            const tableWidth = timeColWidth + (columns.length * dataColWidth);
+            const tableHeight = (relevantSlots.length + 1) * rowHeight;
+            doc.rect(20, startY, tableWidth, tableHeight);
+
+            doc.line(20 + timeColWidth, startY, 20 + timeColWidth, startY + tableHeight);
+            for (let i = 1; i < columns.length; i++) {const x = 20 + timeColWidth + (i * dataColWidth);
+               doc.line(x, startY, x, startY + tableHeight);
+           }
+
+           for (let i = 1; i <= relevantSlots.length; i++) {
+               const y = startY + (i * rowHeight);
+
+               if (i === 1) {
+                   doc.line(20, y, 20 + tableWidth, y);
+               } else {
+                   doc.line(20, y, 20 + timeColWidth, y);
+
+                   columns.forEach((col, colIndex) => {
+                       const rowIndex = i - 2;
+                       if (rowIndex >= 0 && rowIndex < relevantSlots.length) {
+                           const merge = mergeInfo[col][rowIndex];
+                           const x = 20 + timeColWidth + (colIndex * dataColWidth);
+                           if (!merge || !merge.isMerged || merge.isLast) {
+                               doc.line(x, y, x + dataColWidth, y);
+                           }
+                       } else if (i === relevantSlots.length + 1) {
+                           const x = 20 + timeColWidth + (colIndex * dataColWidth);
+                           doc.line(x, y, x + dataColWidth, y);
+                       }
+                   });
+               }
+           }
+       }
+
+       function drawPlanningTableWithPagination(doc, day, relevantSlots, mergeInfo, startY, timeColWidth, dataColWidth, minRowHeight, fontSize, availableHeight, pageWidth, pageHeight) {
+           const totalSlots = relevantSlots.length;
+           const midPoint = Math.ceil(totalSlots / 2);
+           
+           const firstPageSlots = relevantSlots.slice(0, midPoint);
+           const firstPageMergeInfo = createPageMergeInfo(day, firstPageSlots, mergeInfo, 0);
+           const firstPageRowHeight = Math.max(12, Math.floor(availableHeight / (firstPageSlots.length + 1)));
+           const firstPageFontSize = Math.max(6, Math.min(10, firstPageRowHeight - 2));
+           
+           drawPlanningTableWithMerges(doc, day, firstPageSlots, firstPageMergeInfo, startY, timeColWidth, dataColWidth, firstPageRowHeight, firstPageFontSize);
+           
+           if (totalSlots > midPoint) {
+               doc.addPage();
+               doc.setFontSize(16);
+               doc.setFont('helvetica', 'bold');
+               doc.text(`${day.charAt(0).toUpperCase() + day.slice(1)} (2/2)`, pageWidth / 2, 30, { align: "center" });
+               
+               const secondPageSlots = relevantSlots.slice(midPoint);
+               const secondPageMergeInfo = createPageMergeInfo(day, secondPageSlots, mergeInfo, midPoint);
+               const secondPageRowHeight = Math.max(12, Math.floor(availableHeight / (secondPageSlots.length + 1)));
+               const secondPageFontSize = Math.max(6, Math.min(10, secondPageRowHeight - 2));
+               
+               drawPlanningTableWithMerges(doc, day, secondPageSlots, secondPageMergeInfo, startY, timeColWidth, dataColWidth, secondPageRowHeight, secondPageFontSize);
+           }
+       }
+
+       function createPageMergeInfo(day, pageSlots, originalMergeInfo, startIndex) {
+           const pageMergeInfo = {};
+           
+           columns.forEach(col => {
+               pageMergeInfo[col] = [];
+               
+               pageSlots.forEach((time, pageIndex) => {
+                   const originalIndex = startIndex + pageIndex;
+                   
+                   if (originalIndex < originalMergeInfo[col].length) {
+                       const originalMerge = originalMergeInfo[col][originalIndex];
+                       
+                       if (originalMerge && originalMerge.value) {
+                           const originalStartRow = originalMerge.startRow;
+                           const originalEndRow = originalStartRow + originalMerge.mergeLength - 1;
+                           
+                           const pageStartIndex = startIndex;
+                           const pageEndIndex = startIndex + pageSlots.length - 1;
+                           
+                           const visibleStart = Math.max(originalStartRow, pageStartIndex);
+                           const visibleEnd = Math.min(originalEndRow, pageEndIndex);
+                           
+                           if (originalIndex >= visibleStart && originalIndex <= visibleEnd) {
+                               pageMergeInfo[col][pageIndex] = {
+                                   isFirst: originalIndex === visibleStart,
+                                   isLast: originalIndex === visibleEnd,
+                                   mergeLength: visibleEnd - visibleStart + 1,
+                                   value: originalMerge.value,
+                                   startRow: visibleStart - startIndex,
+                                   isMerged: originalMerge.isMerged
+                               };
+                           }
+                       } else {
+                           pageMergeInfo[col][pageIndex] = {
+                               isFirst: true,
+                               isLast: true,
+                               mergeLength: 1,
+                               value: '',
+                               startRow: pageIndex,
+                               isMerged: false
+                           };
+                       }
+                   }
+               });
+           });
+           
+           return pageMergeInfo;
+       }
+
+       function analyzeMerges(day, relevantSlots) {
+           const mergeInfo = {};
+
+           columns.forEach(col => {
+               mergeInfo[col] = [];
+               let i = 0;
+
+               while (i < relevantSlots.length) {
+                   const currentTime = relevantSlots[i];
+                   const currentValue = planningData[day][currentTime][col];
+
+                   if (currentValue && currentValue.trim() !== '') {
+                       let mergeLength = 1;
+
+                       while (i + mergeLength < relevantSlots.length) {
+                           const nextTime = relevantSlots[i + mergeLength];
+                           const nextValue = planningData[day][nextTime][col];
+
+                           if (nextValue === currentValue) {
+                               mergeLength++;
+                           } else {
+                               break;
+                           }
+                       }
+
+                       for (let j = 0; j < mergeLength; j++) {
+                           mergeInfo[col][i + j] = {
+                               isFirst: j === 0,
+                               isLast: j === mergeLength - 1,
+                               mergeLength: mergeLength,
+                               value: currentValue,
+                               startRow: i,
+                               isMerged: mergeLength > 1
+                           };
+                       }
+
+                       i += mergeLength;
+                   } else {
+                       mergeInfo[col][i] = {
+                           isFirst: true,
+                           isLast: true,
+                           mergeLength: 1,
+                           value: '',
+                           startRow: i,
+                           isMerged: false
+                       };
+                       i++;
+                   }
+               }
+           });
+
+           return mergeInfo;
+       }
+
+       function getActivityColorRGB(value) {
+           const hex = getActivityColor(value);
+           if (!hex) return null;
+
+           return {
+               r: parseInt(hex.substr(1, 2), 16),
+               g: parseInt(hex.substr(3, 2), 16),
+               b: parseInt(hex.substr(5, 2), 16)
+           };
+       }
+
+       function truncateText(doc, text, maxWidth, fontSize) {
+           doc.setFontSize(fontSize);
+           const textWidth = doc.getTextWidth(text);
+
+           if (textWidth <= maxWidth) {
+               return text;
+           }
+
+           let truncated = text;
+           while (doc.getTextWidth(truncated + "...") > maxWidth && truncated.length > 0) {
+               truncated = truncated.slice(0, -1);
+           }
+
+           return truncated + "...";
+       }
+
+       function getActivityColor(value) {
+           if (!value) return null;
+           let key = value.toLowerCase()
+               .replace(/\s+/g, '-')
+               .replace('renfort-surveillance', 'renfort')
+               .replace('réfectoire', 'refectoire');
+               
+           const activityColors = {
+               'bvs1': '#e91e63',
+               'bvs2': '#ff9800',
+               'portail': '#ff5722',
+               'voltige': '#2196f3',
+               'renfort': '#795548',
+               'cours-impaire': '#4caf50',
+               'cours-paire': '#8bc34a',
+               'etude-impaire': '#9c27b0',
+               'etude-paire': '#673ab7',
+               'ap': '#009688',
+               'hall': '#607d8b',
+               'refectoire': '#ff6f00',
+               'turbo': '#f44336',
+               'bureau-midi': '#3f51b5',
+               'pause': '#9e9e9e',
+               'marsons': '#00bcd4'
+           };
+           return activityColors[key] || null;
+       }
+
+       document.addEventListener('DOMContentLoaded', function() {
+           initializePlannings();
+           initializeNames();
+       });
+</script>
 </body>
 </html>
