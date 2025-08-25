@@ -599,7 +599,7 @@ function createPlanningGrid(day) {
         container.appendChild(createCell(col, 'header-cell'));
     });
     
-    // Time slots and data
+    // Time s and data
     timeSlots.forEach(time => {
         container.appendChild(createCell(time, 'time-slot'));
         columns.forEach(col => {
@@ -1590,9 +1590,6 @@ function truncateText(doc, text, maxWidth, fontSize) {
     return truncated + "...";
 }
 
-// Variable globale pour le mode de coloration
-let colorMode = 'activity'; // 'activity' ou 'person'
-
 // Fonction pour changer le mode de coloration
 function setColorMode(mode) {
     colorMode = mode;
@@ -1714,7 +1711,6 @@ document.addEventListener('DOMContentLoaded', function() {
     initializePlannings();
     initializeNames();
 });
-
 </script>
 </body>
 </html>
