@@ -1779,8 +1779,8 @@ function drawAllDaysForPerson(doc, personSchedule, col, pageWidth, pageHeight) {
             slots: compressed
         });
         
-        // Calculer la hauteur nécessaire pour ce jour
-        const dayHeight = (compressed.length + 1) * 20; // +1 pour l'en-tête
+        // Calculer la hauteur nécessaire pour ce jour (augmentée pour plus d'espace)
+        const dayHeight = (compressed.length + 1) * 28; // Augmenté de 20 à 28 pour plus d'espace
         if (dayHeight > maxHeight) {
             maxHeight = dayHeight;
         }
@@ -1805,11 +1805,12 @@ function drawAllDaysForPerson(doc, personSchedule, col, pageWidth, pageHeight) {
 }
 
 function drawDayColumn(doc, day, compressedSlots, x, y, width, maxHeight) {
-    const headerHeight = 20;
+    const headerHeight = 22;
     const availableHeight = maxHeight || 400;
     const totalSlots = compressedSlots.length;
-    const rowHeight = Math.min(18, Math.max(12, (availableHeight - headerHeight) / totalSlots));
-    const fontSize = Math.min(8, Math.max(6, rowHeight - 4));
+    // Augmenter la hauteur des lignes pour plus d'espace
+    const rowHeight = Math.min(26, Math.max(18, (availableHeight - headerHeight) / totalSlots));
+    const fontSize = Math.min(8, Math.max(6, rowHeight / 3.5)); // Ajusté pour tenir compte de l'espace supplémentaire
     
     // En-tête du jour
     doc.setFillColor(102, 126, 234);
@@ -1843,26 +1844,45 @@ function drawDayColumn(doc, day, compressedSlots, x, y, width, maxHeight) {
             doc.setFont('helvetica', 'normal');
         }
         
-        // Horaires
+        // Calculer les positions verticales avec espacement
+        const topSpacing = rowHeight * 0.20;    // 20% depuis le haut
+        const middleSpacing = rowHeight * 0.50; // 50% (centre)
+        const bottomSpacing = rowHeight * 0.80; // 80% depuis le haut
+        
+        // Horaires (en haut avec plus d'espace)
         const endTimeWith5Min = addMinutesToTime(slot.endTime, 5);
-        const timeText = `${slot.startTime}-${endTimeWith5Min}`;
+        const timeText = `${slot.startTime} - ${endTimeWith5Min}`; // Ajout d'espaces autour du tiret
         
-        // Durée
-        const durationText = `(${formatDuration(slot.duration)})`;
-        
-        // Afficher l'horaire en haut
         doc.setFontSize(fontSize - 1);
-        doc.text(timeText, x + width/2, currentY + rowHeight/3, { align: 'center' });
+        if (activityColor) {
+            doc.setTextColor(255, 255, 255);
+        } else {
+            doc.setTextColor(60, 60, 60);
+        }
+        doc.text(timeText, x + width/2, currentY + topSpacing, { align: 'center' });
         
-        // Afficher l'activité
+        // Activité (au milieu avec bon espacement)
         doc.setFontSize(fontSize);
-        const activityText = truncateText(doc, slot.activity, width - 4, fontSize);
-        doc.text(activityText, x + width/2, currentY + rowHeight/2 + 2, { align: 'center' });
+        if (activityColor) {
+            doc.setTextColor(255, 255, 255);
+            doc.setFont('helvetica', 'bold');
+        } else {
+            doc.setTextColor(0, 0, 0);
+            doc.setFont('helvetica', 'normal');
+        }
+        const activityText = truncateText(doc, slot.activity, width - 6, fontSize);
+        doc.text(activityText, x + width/2, currentY + middleSpacing, { align: 'center' });
         
-        // Afficher la durée en bas
+        // Durée (en bas avec espacement)
+        const durationText = `( ${formatDuration(slot.duration)} )`; // Ajout d'espaces dans les parenthèses
         doc.setFontSize(fontSize - 2);
-        doc.setTextColor(255, 255, 255, 0.8);
-        doc.text(durationText, x + width/2, currentY + rowHeight * 0.75, { align: 'center' });
+        if (activityColor) {
+            doc.setTextColor(255, 255, 255, 0.9);
+        } else {
+            doc.setTextColor(100, 100, 100);
+        }
+        doc.setFont('helvetica', 'normal');
+        doc.text(durationText, x + width/2, currentY + bottomSpacing, { align: 'center' });
         
         currentY += rowHeight;
     });
@@ -1876,7 +1896,7 @@ function drawDayColumn(doc, day, compressedSlots, x, y, width, maxHeight) {
 }
 
 function drawEmptyDayColumn(doc, day, x, y, width) {
-    const headerHeight = 20;
+    const headerHeight = 22;
     
     // En-tête du jour
     doc.setFillColor(200, 200, 200);
@@ -1914,28 +1934,28 @@ function drawPersonSummaryBottom(doc, personSchedule, startY, pageWidth) {
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(0, 0, 0);
-    doc.text('Résumé hebdomadaire:', 30, startY);
+    doc.text('Résumé hebdomadaire :', 30, startY); // Ajout d'espace avant les deux-points
     
     // Total d'heures
     doc.setTextColor(102, 126, 234);
-    doc.text(`Total: ${formatDuration(summary.totalMinutes)}`, 150, startY);
+    doc.text(`Total : ${formatDuration(summary.totalMinutes)}`, 160, startY); // Ajout d'espace avant les deux-points
     
     // Détail par activité sur une ligne
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
     
-    let currentX = 250;
+    let currentX = 260;
     const maxX = pageWidth - 30;
     const sortedActivities = Object.entries(summary.activities).sort((a, b) => b[1] - a[1]);
     
     sortedActivities.forEach(([activity, minutes]) => {
-        const text = `${activity}: ${formatDuration(minutes)}`;
-        const textWidth = doc.getTextWidth(text) + 15;
+        const text = `${activity} : ${formatDuration(minutes)}`; // Ajout d'espaces autour des deux-points
+        const textWidth = doc.getTextWidth(text) + 20; // Plus d'espace entre les éléments
         
         // Vérifier si on dépasse la largeur
         if (currentX + textWidth > maxX) {
             startY += 12;
-            currentX = 250;
+            currentX = 260;
         }
         
         // Petit indicateur de couleur
@@ -2042,9 +2062,9 @@ function formatDuration(minutes) {
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
     if (mins === 0) {
-        return `${hours}h`;
+        return `${hours} h`; // Ajout d'espace avant 'h'
     }
-    return `${hours}h${mins.toString().padStart(2, '0')}`;
+    return `${hours} h ${mins.toString().padStart(2, '0')}`; // Ajout d'espaces autour de 'h'
 }
 </script>
 </body>
