@@ -1715,7 +1715,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
         function generateIndividualPDF() {
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF('p', 'pt', 'a4');
+    const doc = new jsPDF('l', 'pt', 'a4'); // Format paysage pour avoir plus d'espace
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     
@@ -1724,10 +1724,10 @@ document.addEventListener('DOMContentLoaded', function() {
     // Pour chaque personne (colonne)
     columns.forEach((col, personIndex) => {
         const personName = getDisplayName(col);
-        const personSchedule = getPersonSchedule(col);
+        const personData = getPersonWeekData(col);
         
         // Vérifier si la personne a au moins une activité dans la semaine
-        if (!hasAnyActivity(personSchedule)) {
+        if (!hasAnyActivityInWeek(personData)) {
             return; // Passer à la personne suivante si aucune activité
         }
         
@@ -1737,56 +1737,23 @@ document.addEventListener('DOMContentLoaded', function() {
         isFirstPage = false;
         
         // Titre de la page avec le nom de la personne
-        doc.setFontSize(18);
+        doc.setFontSize(16);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(0, 0, 0);
-        doc.text(`Emploi du temps - ${personName}`, pageWidth / 2, 40, { align: 'center' });
+        doc.text(`Emploi du temps - ${personName}`, pageWidth / 2, 35, { align: 'center' });
         
         // Date de génération
-        const today = new Date();
-        doc.setFontSize(10);
+        doc.setFontSize(9);
         doc.setFont('helvetica', 'normal');
-        doc.text(`Généré le ${today.toLocaleDateString('fr-FR')}`, pageWidth / 2, 55, { align: 'center' });
+        doc.setTextColor(100, 100, 100);
+        const today = new Date();
+        doc.text(`Généré le ${today.toLocaleDateString('fr-FR')}`, pageWidth / 2, 48, { align: 'center' });
         
-        let currentY = 80;
-        const daySpacing = 5;
-        
-        // Pour chaque jour de la semaine
-        days.forEach(day => {
-            const daySchedule = personSchedule[day];
-            const compressedSlots = compressPersonTimeSlots(day, col);
-            
-            if (compressedSlots.length > 0) {
-                // Titre du jour
-                doc.setFontSize(14);
-                doc.setFont('helvetica', 'bold');
-                doc.setTextColor(102, 126, 234);
-                doc.text(day.charAt(0).toUpperCase() + day.slice(1), 40, currentY);
-                currentY += 20;
-                
-                // Calculer la hauteur disponible pour ce jour
-                const remainingHeight = pageHeight - currentY - 50;
-                const maxSlotsPerPage = Math.floor(remainingHeight / 25);
-                
-                // Si nécessaire, passer à la page suivante
-                if (compressedSlots.length * 25 > remainingHeight && currentY > pageHeight / 2) {
-                    doc.addPage();
-                    currentY = 40;
-                    doc.setFontSize(14);
-                    doc.setFont('helvetica', 'bold');
-                    doc.setTextColor(102, 126, 234);
-                    doc.text(`${day.charAt(0).toUpperCase() + day.slice(1)} (suite)`, 40, currentY);
-                    currentY += 20;
-                }
-                
-                // Dessiner le planning du jour pour cette personne
-                currentY = drawPersonDaySchedule(doc, compressedSlots, currentY, pageWidth);
-                currentY += daySpacing;
-            }
-        });
+        // Dessiner l'emploi du temps en colonnes
+        drawPersonWeekSchedule(doc, personData, col);
         
         // Ajouter un résumé en bas de page
-        drawPersonSummary(doc, personSchedule, pageHeight - 100, pageWidth);
+        drawWeekSummary(doc, personData, pageHeight - 50, pageWidth);
     });
     
     // Sauvegarder le PDF
@@ -1794,191 +1761,240 @@ document.addEventListener('DOMContentLoaded', function() {
     doc.save(filename);
 }
 
-function getPersonSchedule(col) {
-    const schedule = {};
+function getPersonWeekData(col) {
+    const weekData = {};
     
     days.forEach(day => {
-        schedule[day] = {};
-        timeSlots.forEach(time => {
+        weekData[day] = [];
+        let currentBlock = null;
+        
+        timeSlots.forEach((time, index) => {
             const activity = planningData[day][time][col];
+            
             if (activity && activity.trim() !== '') {
-                schedule[day][time] = activity;
+                if (currentBlock && currentBlock.activity === activity) {
+                    // Continuer le bloc actuel
+                    currentBlock.endTime = time;
+                    currentBlock.slots++;
+                } else {
+                    // Nouveau bloc
+                    if (currentBlock) {
+                        weekData[day].push(currentBlock);
+                    }
+                    currentBlock = {
+                        startTime: time,
+                        endTime: time,
+                        activity: activity,
+                        slots: 1
+                    };
+                }
+            } else {
+                // Fin du bloc actuel
+                if (currentBlock) {
+                    weekData[day].push(currentBlock);
+                    currentBlock = null;
+                }
             }
         });
-    });
-    
-    return schedule;
-}
-
-function hasAnyActivity(personSchedule) {
-    return days.some(day => 
-        Object.keys(personSchedule[day]).length > 0
-    );
-}
-
-function compressPersonTimeSlots(day, col) {
-    const compressed = [];
-    let currentBlock = null;
-    
-    timeSlots.forEach((time, index) => {
-        const activity = planningData[day][time][col];
         
-        if (activity && activity.trim() !== '') {
-            if (currentBlock && currentBlock.activity === activity) {
-                // Continuer le bloc actuel
-                currentBlock.endTime = time;
-                currentBlock.duration += 5;
-            } else {
-                // Commencer un nouveau bloc
-                if (currentBlock) {
-                    compressed.push(currentBlock);
-                }
-                currentBlock = {
-                    startTime: time,
-                    endTime: time,
-                    activity: activity,
-                    duration: 5
-                };
-            }
-        } else {
-            // Fin du bloc actuel si existant
-            if (currentBlock) {
-                compressed.push(currentBlock);
-                currentBlock = null;
-            }
+        // Ajouter le dernier bloc si existant
+        if (currentBlock) {
+            weekData[day].push(currentBlock);
         }
     });
     
-    // Ajouter le dernier bloc si existant
-    if (currentBlock) {
-        compressed.push(currentBlock);
-    }
-    
-    return compressed;
+    return weekData;
 }
 
-function drawPersonDaySchedule(doc, compressedSlots, startY, pageWidth) {
-    const leftMargin = 60;
-    const rightMargin = 40;
-    const tableWidth = pageWidth - leftMargin - rightMargin;
-    const timeColWidth = 120;
-    const activityColWidth = tableWidth - timeColWidth;
-    const rowHeight = 22;
+function hasAnyActivityInWeek(weekData) {
+    return days.some(day => weekData[day] && weekData[day].length > 0);
+}
+
+function drawPersonWeekSchedule(doc, weekData, col) {
+    const startY = 70;
+    const leftMargin = 20;
+    const rightMargin = 20;
+    const tableWidth = doc.internal.pageSize.getWidth() - leftMargin - rightMargin;
+    const dayColumnWidth = tableWidth / 5; // 5 jours
     
-    let currentY = startY;
+    // Trouver tous les créneaux horaires uniques de la personne
+    const allTimeSlots = getAllPersonTimeSlots(weekData);
     
-    // En-tête du tableau
-    doc.setFillColor(240, 240, 240);
-    doc.rect(leftMargin, currentY, timeColWidth, rowHeight, 'F');
-    doc.rect(leftMargin + timeColWidth, currentY, activityColWidth, rowHeight, 'F');
+    if (allTimeSlots.length === 0) return;
     
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
-    doc.setTextColor(0, 0, 0);
-    doc.text('Horaires', leftMargin + timeColWidth/2, currentY + rowHeight/2 + 3, { align: 'center' });
-    doc.text('Activité', leftMargin + timeColWidth + activityColWidth/2, currentY + rowHeight/2 + 3, { align: 'center' });
+    // Hauteur disponible pour le tableau
+    const availableHeight = doc.internal.pageSize.getHeight() - startY - 80;
+    const rowHeight = Math.min(20, Math.max(12, availableHeight / (allTimeSlots.length + 1)));
+    const fontSize = Math.min(9, Math.max(6, rowHeight - 4));
     
-    currentY += rowHeight;
+    // Dessiner les en-têtes des jours
+    doc.setFillColor(102, 126, 234);
+    days.forEach((day, index) => {
+        const x = leftMargin + (index * dayColumnWidth);
+        doc.rect(x, startY, dayColumnWidth, rowHeight, 'F');
+        
+        doc.setTextColor(255, 255, 255);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(fontSize + 1);
+        doc.text(day.charAt(0).toUpperCase() + day.slice(1), x + dayColumnWidth/2, startY + rowHeight/2 + 3, { align: 'center' });
+    });
     
-    // Lignes de données
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
+    // Dessiner les lignes pour chaque créneau horaire
+    let currentY = startY + rowHeight;
     
-    compressedSlots.forEach((slot, index) => {
-        // Alterner les couleurs de fond
-        if (index % 2 === 0) {
-            doc.setFillColor(250, 250, 250);
+    allTimeSlots.forEach((timeSlot, rowIndex) => {
+        // Alternance de couleur de fond
+        if (rowIndex % 2 === 0) {
+            doc.setFillColor(248, 249, 250);
             doc.rect(leftMargin, currentY, tableWidth, rowHeight, 'F');
         }
         
-        // Horaires
-        const endTimeWith5Min = addMinutesToTime(slot.endTime, 5);
-        const timeText = `${slot.startTime} - ${endTimeWith5Min}`;
-        const durationText = formatDuration(slot.duration);
-        
-        doc.setTextColor(0, 0, 0);
-        doc.text(timeText, leftMargin + 10, currentY + rowHeight/2);
-        doc.setFontSize(9);
-        doc.setTextColor(100, 100, 100);
-        doc.text(`(${durationText})`, leftMargin + timeColWidth - 10, currentY + rowHeight/2, { align: 'right' });
-        
-        // Activité avec couleur
-        const activityColor = getActivityColorRGB(slot.activity);
-        if (activityColor) {
-            doc.setFillColor(activityColor.r, activityColor.g, activityColor.b);
-            doc.rect(leftMargin + timeColWidth + 5, currentY + 3, activityColWidth - 10, rowHeight - 6, 'F');
-            doc.setTextColor(255, 255, 255);
-            doc.setFont('helvetica', 'bold');
-        } else {
-            doc.setTextColor(0, 0, 0);
-            doc.setFont('helvetica', 'normal');
-        }
-        doc.setFontSize(10);
-        doc.text(slot.activity, leftMargin + timeColWidth + activityColWidth/2, currentY + rowHeight/2 + 3, { align: 'center' });
+        // Pour chaque jour, vérifier si il y a une activité à ce créneau
+        days.forEach((day, dayIndex) => {
+            const x = leftMargin + (dayIndex * dayColumnWidth);
+            const activity = getActivityAtTime(weekData[day], timeSlot);
+            
+            if (activity) {
+                // Dessiner l'activité avec sa couleur
+                const color = getActivityColorRGB(activity.activity);
+                if (color) {
+                    doc.setFillColor(color.r, color.g, color.b);
+                    doc.rect(x + 1, currentY + 1, dayColumnWidth - 2, rowHeight - 2, 'F');
+                    doc.setTextColor(255, 255, 255);
+                    doc.setFont('helvetica', 'bold');
+                } else {
+                    doc.setTextColor(0, 0, 0);
+                    doc.setFont('helvetica', 'normal');
+                }
+                
+                // Texte de l'activité et horaire
+                doc.setFontSize(fontSize);
+                const endTimeWith5Min = addMinutesToTime(activity.endTime, 5);
+                const timeText = `${activity.startTime}-${endTimeWith5Min}`;
+                const activityText = truncateText(doc, activity.activity, dayColumnWidth - 4, fontSize);
+                
+                // Afficher l'activité
+                doc.text(activityText, x + dayColumnWidth/2, currentY + rowHeight/2, { align: 'center' });
+                
+                // Afficher l'horaire en plus petit
+                doc.setFontSize(fontSize - 2);
+                doc.text(timeText, x + dayColumnWidth/2, currentY + rowHeight/2 + fontSize, { align: 'center' });
+            }
+        });
         
         currentY += rowHeight;
     });
     
-    // Bordures du tableau
+    // Dessiner les bordures du tableau
     doc.setDrawColor(200, 200, 200);
     doc.setLineWidth(0.5);
-    const tableHeight = (compressedSlots.length + 1) * rowHeight;
-    doc.rect(leftMargin, startY, tableWidth, tableHeight);
-    doc.line(leftMargin + timeColWidth, startY, leftMargin + timeColWidth, startY + tableHeight);
     
-    return currentY;
+    // Bordure extérieure
+    const tableHeight = (allTimeSlots.length + 1) * rowHeight;
+    doc.rect(leftMargin, startY, tableWidth, tableHeight);
+    
+    // Lignes verticales entre les jours
+    for (let i = 1; i < 5; i++) {
+        const x = leftMargin + (i * dayColumnWidth);
+        doc.line(x, startY, x, startY + tableHeight);
+    }
+    
+    // Ligne horizontale après l'en-tête
+    doc.line(leftMargin, startY + rowHeight, leftMargin + tableWidth, startY + rowHeight);
 }
 
-function drawPersonSummary(doc, personSchedule, startY, pageWidth) {
-    const summary = calculatePersonSummary(personSchedule);
+function getAllPersonTimeSlots(weekData) {
+    const timeSlotsSet = new Set();
     
-    if (Object.keys(summary.activities).length === 0) return;
+    days.forEach(day => {
+        weekData[day].forEach(block => {
+            // Ajouter un identifiant unique pour chaque bloc d'activité
+            const slotKey = `${block.startTime}-${block.endTime}-${block.activity}`;
+            timeSlotsSet.add(slotKey);
+        });
+    });
     
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(0, 0, 0);
-    doc.text('Résumé hebdomadaire:', 40, startY);
-    
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    
-    let currentY = startY + 20;
-    const leftMargin = 60;
-    
-    // Total d'heures
-    doc.setFont('helvetica', 'bold');
-    doc.text(`Total: ${formatDuration(summary.totalMinutes)}`, leftMargin, currentY);
-    currentY += 15;
-    
-    // Détail par activité
-    doc.setFont('helvetica', 'normal');
-    Object.entries(summary.activities).forEach(([activity, minutes]) => {
-        const activityColor = getActivityColorRGB(activity);
-        if (activityColor) {
-            doc.setFillColor(activityColor.r, activityColor.g, activityColor.b);
-            doc.circle(leftMargin - 5, currentY - 3, 3, 'F');
-        }
-        doc.setTextColor(0, 0, 0);
-        doc.text(`${activity}: ${formatDuration(minutes)}`, leftMargin + 10, currentY);
-        currentY += 12;
+    // Convertir en array et trier par heure de début
+    return Array.from(timeSlotsSet).sort((a, b) => {
+        const timeA = a.split('-')[0];
+        const timeB = b.split('-')[0];
+        return timeA.localeCompare(timeB);
     });
 }
 
-function calculatePersonSummary(personSchedule) {
+function getActivityAtTime(dayBlocks, timeSlotKey) {
+    if (!dayBlocks) return null;
+    
+    const [searchStart, searchEnd, searchActivity] = timeSlotKey.split('-');
+    
+    return dayBlocks.find(block => 
+        block.startTime === searchStart && 
+        block.endTime === searchEnd && 
+        block.activity === searchActivity
+    );
+}
+
+function drawWeekSummary(doc, weekData, startY, pageWidth) {
+    const summary = calculateWeekSummary(weekData);
+    
+    if (summary.totalMinutes === 0) return;
+    
+    // Titre du résumé
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(0, 0, 0);
+    doc.text('Résumé hebdomadaire:', 30, startY);
+    
+    // Total d'heures
+    doc.setFontSize(9);
+    doc.text(`Total: ${formatDuration(summary.totalMinutes)}`, 150, startY);
+    
+    // Répartition par activité sur une ligne
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    
+    let currentX = 250;
+    const maxWidth = pageWidth - 30;
+    const activities = Object.entries(summary.activities).sort((a, b) => b[1] - a[1]); // Trier par durée décroissante
+    
+    activities.forEach(([activity, minutes], index) => {
+        const text = `${activity}: ${formatDuration(minutes)}`;
+        const textWidth = doc.getTextWidth(text);
+        
+        // Passer à la ligne suivante si nécessaire
+        if (currentX + textWidth > maxWidth) {
+            startY += 12;
+            currentX = 250;
+        }
+        
+        // Ajouter un petit cercle de couleur
+        const color = getActivityColorRGB(activity);
+        if (color) {
+            doc.setFillColor(color.r, color.g, color.b);
+            doc.circle(currentX - 5, startY - 2, 2, 'F');
+        }
+        
+        doc.setTextColor(0, 0, 0);
+        doc.text(text, currentX, startY);
+        currentX += textWidth + 20;
+    });
+}
+
+function calculateWeekSummary(weekData) {
     const summary = {
         totalMinutes: 0,
         activities: {}
     };
     
     days.forEach(day => {
-        Object.entries(personSchedule[day]).forEach(([time, activity]) => {
-            if (activity) {
-                summary.totalMinutes += 5;
-                if (!summary.activities[activity]) {
-                    summary.activities[activity] = 0;
-                }
-                summary.activities[activity] += 5;
+        weekData[day].forEach(block => {
+            const duration = block.slots * 5; // 5 minutes par créneau
+            summary.totalMinutes += duration;
+            
+            if (!summary.activities[block.activity]) {
+                summary.activities[block.activity] = 0;
             }
+            summary.activities[block.activity] += duration;
         });
     });
     
@@ -1987,14 +2003,14 @@ function calculatePersonSummary(personSchedule) {
 
 function formatDuration(minutes) {
     if (minutes < 60) {
-        return `${minutes} min`;
+        return `${minutes}min`;
     }
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
     if (mins === 0) {
         return `${hours}h`;
     }
-    return `${hours}h${mins}`;
+    return `${hours}h${mins.toString().padStart(2, '0')}`;
 }
 </script>
 </body>
