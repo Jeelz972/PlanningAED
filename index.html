@@ -311,6 +311,7 @@
 <input type="file" id="import-excel" accept=".xlsx,.xls" style="display:none" />
 <button class="btn btn-primary" onclick="document.getElementById('import-excel').click()">Importer un fichier Excel</button>
         <button class="btn btn-primary" onclick="generatePDF()">🖨️ Générer PDF imprimable</button>
+            <button class="btn btn-primary" onclick="generatePDFParPersonne()">📄 PDF par personne</button>
         </div>
         
         <div class="activity-selector">
@@ -1897,6 +1898,248 @@ const activityColors = {
 
 return activityColors[key] || null;
 
+}
+        function generatePDFParPersonne() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('l', 'pt', 'a4'); // Format paysage
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    
+    // Collecter toutes les personnes (colonnes A-G)
+    const personnes = columns.filter(col => {
+        // Vérifier si la personne a au moins une activité dans la semaine
+        return days.some(day => 
+            timeSlots.some(time => 
+                planningData[day][time][col] && planningData[day][time][col].trim() !== ''
+            )
+        );
+    });
+    
+    if (personnes.length === 0) {
+        alert("Aucune donnée à exporter");
+        return;
+    }
+    
+    // Générer une page par personne
+    personnes.forEach((personne, personneIndex) => {
+        if (personneIndex > 0) {
+            doc.addPage();
+        }
+        
+        // Titre de la page
+        doc.setFontSize(20);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`Emploi du temps - ${personne}`, pageWidth / 2, 30, { align: "center" });
+        
+        // Date ou période
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Semaine du planning`, pageWidth / 2, 45, { align: "center" });
+        
+        // Calculer l'espace disponible pour les tableaux
+        const startY = 60;
+        const tableSpacing = 10;
+        const availableHeight = pageHeight - startY - 30;
+        const tableHeight = (availableHeight - (4 * tableSpacing)) / 5; // 5 jours
+        
+        // Dessiner un tableau pour chaque jour
+        let currentY = startY;
+        
+        days.forEach((day, dayIndex) => {
+            // Collecter les créneaux avec activités pour cette personne ce jour
+            const activitesJour = [];
+            let lastEndTime = null;
+            let currentActivity = null;
+            let startTime = null;
+            
+            timeSlots.forEach((time, timeIndex) => {
+                const activity = planningData[day][time][personne];
+                
+                if (activity && activity.trim() !== '') {
+                    if (currentActivity === null) {
+                        // Début d'une nouvelle activité
+                        currentActivity = activity;
+                        startTime = time;
+                    } else if (currentActivity !== activity) {
+                        // Fin de l'activité précédente, début d'une nouvelle
+                        const endTimeIndex = timeIndex - 1;
+                        const endTime = timeIndex > 0 ? getNextTimeSlot(timeSlots[endTimeIndex]) : time;
+                        activitesJour.push({
+                            start: startTime,
+                            end: endTime,
+                            activity: currentActivity
+                        });
+                        currentActivity = activity;
+                        startTime = time;
+                    }
+                } else if (currentActivity !== null) {
+                    // Fin de l'activité en cours
+                    const endTimeIndex = timeIndex - 1;
+                    const endTime = timeIndex > 0 ? getNextTimeSlot(timeSlots[endTimeIndex]) : time;
+                    activitesJour.push({
+                        start: startTime,
+                        end: endTime,
+                        activity: currentActivity
+                    });
+                    currentActivity = null;
+                    startTime = null;
+                }
+            });
+            
+            // Gérer la dernière activité si elle continue jusqu'à la fin
+            if (currentActivity !== null) {
+                const lastTime = timeSlots[timeSlots.length - 1];
+                const endTime = getNextTimeSlot(lastTime);
+                activitesJour.push({
+                    start: startTime,
+                    end: endTime,
+                    activity: currentActivity
+                });
+            }
+            
+            // Dessiner le tableau du jour
+            drawDayTable(doc, day, activitesJour, currentY, pageWidth, tableHeight);
+            currentY += tableHeight + tableSpacing;
+        });
+        
+        // Ajouter un résumé en bas de page
+        addSummaryForPerson(doc, personne, pageHeight - 25);
+    });
+    
+    doc.save(`planning_par_personne.pdf`);
+}
+
+function drawDayTable(doc, day, activites, startY, pageWidth, maxHeight) {
+    const marginLeft = 40;
+    const marginRight = 40;
+    const tableWidth = pageWidth - marginLeft - marginRight;
+    
+    // Titre du jour
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.setFillColor(102, 126, 234);
+    doc.rect(marginLeft, startY, tableWidth, 20, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.text(day.charAt(0).toUpperCase() + day.slice(1), marginLeft + 10, startY + 13);
+    
+    // Réinitialiser les couleurs pour le contenu
+    doc.setTextColor(0, 0, 0);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    
+    if (activites.length === 0) {
+        // Jour sans activité
+        doc.setFillColor(248, 249, 250);
+        doc.rect(marginLeft, startY + 20, tableWidth, 25, 'F');
+        doc.setTextColor(150, 150, 150);
+        doc.text("Pas d'activité", marginLeft + tableWidth/2, startY + 35, { align: 'center' });
+    } else {
+        // Dessiner les activités
+        let currentY = startY + 20;
+        const colWidths = [80, 80, tableWidth - 160]; // Début, Fin, Activité
+        
+        // En-têtes des colonnes
+        doc.setFillColor(240, 240, 240);
+        doc.rect(marginLeft, currentY, tableWidth, 18, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9);
+        doc.text("Début", marginLeft + 5, currentY + 12);
+        doc.text("Fin", marginLeft + colWidths[0] + 5, currentY + 12);
+        doc.text("Activité", marginLeft + colWidths[0] + colWidths[1] + 5, currentY + 12);
+        
+        currentY += 18;
+        doc.setFont('helvetica', 'normal');
+        
+        // Limiter le nombre d'activités affichées selon l'espace disponible
+        const rowHeight = 20;
+        const maxRows = Math.floor((maxHeight - 38) / rowHeight);
+        const activitesToShow = activites.slice(0, maxRows);
+        
+        activitesToShow.forEach((act, index) => {
+            // Couleur de fond alternée
+            if (index % 2 === 0) {
+                doc.setFillColor(252, 252, 252);
+            } else {
+                doc.setFillColor(248, 248, 248);
+            }
+            doc.rect(marginLeft, currentY, tableWidth, rowHeight, 'F');
+            
+            // Obtenir la couleur de l'activité
+            const color = getActivityColorRGB(act.activity);
+            
+            // Horaires
+            doc.setTextColor(0, 0, 0);
+            doc.setFontSize(9);
+            doc.text(act.start, marginLeft + 5, currentY + 13);
+            doc.text(act.end, marginLeft + colWidths[0] + 5, currentY + 13);
+            
+            // Activité avec sa couleur
+            if (color) {
+                // Petit rectangle coloré
+                doc.setFillColor(color.r, color.g, color.b);
+                doc.rect(marginLeft + colWidths[0] + colWidths[1] + 5, currentY + 5, 10, 10, 'F');
+                doc.setTextColor(0, 0, 0);
+                doc.text(act.activity, marginLeft + colWidths[0] + colWidths[1] + 20, currentY + 13);
+            } else {
+                doc.setTextColor(0, 0, 0);
+                doc.text(act.activity, marginLeft + colWidths[0] + colWidths[1] + 5, currentY + 13);
+            }
+            
+            currentY += rowHeight;
+        });
+        
+        // Si des activités ont été tronquées
+        if (activites.length > maxRows) {
+            doc.setTextColor(150, 150, 150);
+            doc.setFontSize(8);
+            doc.text(`... et ${activites.length - maxRows} autre(s) activité(s)`, 
+                    marginLeft + 5, currentY + 10);
+        }
+    }
+    
+    // Bordure du tableau
+    doc.setDrawColor(200, 200, 200);
+    doc.setLineWidth(0.5);
+    const tableHeight = Math.min(maxHeight, 20 + (activites.length > 0 ? 38 + (activites.length * 20) : 25));
+    doc.rect(marginLeft, startY, tableWidth, tableHeight);
+}
+
+function addSummaryForPerson(doc, personne, yPosition) {
+    // Calculer le temps total de travail de la personne
+    let totalMinutes = 0;
+    const slotDuration = 5; // 5 minutes par créneau
+    
+    days.forEach(day => {
+        timeSlots.forEach(time => {
+            if (planningData[day][time][personne] && 
+                planningData[day][time][personne].trim() !== '') {
+                totalMinutes += slotDuration;
+            }
+        });
+    });
+    
+    if (totalMinutes > 0) {
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'italic');
+        doc.setTextColor(100, 100, 100);
+        const totalFormatted = formatHM(totalMinutes);
+        doc.text(`Temps total de la semaine: ${totalFormatted}`, 
+                doc.internal.pageSize.getWidth() / 2, yPosition, { align: 'center' });
+    }
+}
+
+function getNextTimeSlot(currentTime) {
+    // Fonction pour obtenir l'heure de fin d'un créneau
+    const [hours, minutes] = currentTime.split(':').map(Number);
+    let newMinutes = minutes + 5; // Ajouter 5 minutes
+    let newHours = hours;
+    
+    if (newMinutes >= 60) {
+        newMinutes -= 60;
+        newHours += 1;
+    }
+    
+    return `${String(newHours).padStart(2, '0')}:${String(newMinutes).padStart(2, '0')}`;
 }
     </script>
 </body>
