@@ -307,10 +307,18 @@
         <div class="controls">
             <button class="btn btn-success" onclick="generateExcel()">📊 Générer fichier Excel</button>
             <button class="btn btn-danger" onclick="clearAll()">🗑️ Effacer tout</button>
+            
 <!-- Bouton d'import -->
 <input type="file" id="import-excel" accept=".xlsx,.xls" style="display:none" />
 <button class="btn btn-primary" onclick="document.getElementById('import-excel').click()">Importer un fichier Excel</button>
-        <button class="btn btn-primary" onclick="generatePDF()">🖨️ Générer PDF imprimable</button>
+        <div class="controls">
+    <h3>Configuration des noms pour le PDF</h3>
+    <div id="name-mapping" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom: 15px;">
+        <!-- Les inputs seront générés dynamiquement -->
+    </div>
+    <button class="btn btn-primary" onclick="resetNames()">Réinitialiser les noms</button>
+</div>
+            <button class="btn btn-primary" onclick="generatePDF()">🖨️ Générer PDF imprimable</button>
         </div>
         
         <div class="activity-selector">
@@ -463,116 +471,160 @@
 
     <script>
         const timeSlots = [
-            '07:25', '07:30','07:35', '07:40', '07:45', '07:50', '07:55', '08:00', '08:05', '08:10', '08:15',
-            '08:20', '08:25', '08:30', '08:35', '08:40', '08:45', '08:50', '08:55', '09:00', '09:05',
-            '09:10', '09:15', '09:20', '09:25', '09:30', '09:35', '09:40', '09:45', '09:50', '09:55',
-            '10:00', '10:05', '10:10', '10:15', '10:20', '10:25', '10:30', '10:35', '10:40', '10:45',
-            '10:50', '10:55', '11:00', '11:05', '11:10', '11:15', '11:20', '11:25', '11:30', '11:35',
-            '11:40', '11:45', '11:50', '11:55', '12:00', '12:05', '12:10', '12:15', '12:20', '12:25',
-            '12:30', '12:35', '12:40', '12:45', '12:50', '12:55', '13:00', '13:05', '13:10', '13:15',
-            '13:20', '13:25', '13:30', '13:35', '13:40', '13:45', '13:50', '13:55', '14:00', '14:05',
-            '14:10', '14:15', '14:20', '14:25', '14:30', '14:35', '14:40', '14:45', '14:50', '14:55',
-            '15:00', '15:05', '15:10', '15:15', '15:20', '15:25', '15:30', '15:35', '15:40', '15:45',
-            '15:50', '15:55', '16:00', '16:05', '16:10', '16:15', '16:20', '16:25', '16:30', '16:35',
-            '16:40', '16:45', '16:50', '16:55', '17:00', '17:05', '17:10', '17:15', '17:20', '17:25',
-            '17:30', '17:35'
-        ];
-        
-        const columns = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
-        const days = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi'];
-        
-        let selectedActivity = 'BVS1';
-        let isMouseDown = false;
-        let dragActivity = null;
-        let startDay = null;
-        let startCol = null;
-        let startRow = null;
-        let planningData = {};
-        // Table de correspondance pour l'affichage (affichage => interne)
+    '07:25', '07:30','07:35', '07:40', '07:45', '07:50', '07:55', '08:00', '08:05', '08:10', '08:15',
+    '08:20', '08:25', '08:30', '08:35', '08:40', '08:45', '08:50', '08:55', '09:00', '09:05',
+    '09:10', '09:15', '09:20', '09:25', '09:30', '09:35', '09:40', '09:45', '09:50', '09:55',
+    '10:00', '10:05', '10:10', '10:15', '10:20', '10:25', '10:30', '10:35', '10:40', '10:45',
+    '10:50', '10:55', '11:00', '11:05', '11:10', '11:15', '11:20', '11:25', '11:30', '11:35',
+    '11:40', '11:45', '11:50', '11:55', '12:00', '12:05', '12:10', '12:15', '12:20', '12:25',
+    '12:30', '12:35', '12:40', '12:45', '12:50', '12:55', '13:00', '13:05', '13:10', '13:15',
+    '13:20', '13:25', '13:30', '13:35', '13:40', '13:45', '13:50', '13:55', '14:00', '14:05',
+    '14:10', '14:15', '14:20', '14:25', '14:30', '14:35', '14:40', '14:45', '14:50', '14:55',
+    '15:00', '15:05', '15:10', '15:15', '15:20', '15:25', '15:30', '15:35', '15:40', '15:45',
+    '15:50', '15:55', '16:00', '16:05', '16:10', '16:15', '16:20', '16:25', '16:30', '16:35',
+    '16:40', '16:45', '16:50', '16:55', '17:00', '17:05', '17:10', '17:15', '17:20', '17:25',
+    '17:30', '17:35'
+];
+
+const columns = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
+const days = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi'];
+
+let selectedActivity = 'BVS1';
+let isMouseDown = false;
+let dragActivity = null;
+let startDay = null;
+let startCol = null;
+let startRow = null;
+let planningData = {};
+
+// Table de correspondance pour l'affichage
 const affichageMapping = {
   'Voltige': 'Suivi de classe/accompagnement élèves/aide bureau',
   'Renfort surveillance': 'Cours/WC/Hall'
 };
-// Table inverse (interne => affichage)
+
 const affichageReverseMapping = {
   'Suivi de classe/accompagnement élèves/aide bureau': 'Voltige',
   'Cours/WC/Hall': 'Renfort surveillance'
 };
+
+// Stockage des noms personnalisés
+let customNames = {};
+let colorMode = 'activity'; // 'activity' ou 'person'
+
+// Initialiser les noms par défaut
+function initializeNames() {
+    columns.forEach(col => {
+        if (!customNames[col]) {
+            customNames[col] = col;
+        }
+    });
+    updateNameInputs();
+}
+
+// Mettre à jour les inputs de noms
+function updateNameInputs() {
+    const container = document.getElementById('name-mapping');
+    container.innerHTML = '';
+    
+    columns.forEach(col => {
+        const div = document.createElement('div');
+        div.innerHTML = `
+            <label for="name-${col}" style="display: block; font-weight: bold; margin-bottom: 5px;">
+                Colonne ${col}:
+            </label>
+            <input type="text" 
+                   id="name-${col}" 
+                   value="${customNames[col] || col}" 
+                   placeholder="Nom de la personne"
+                   style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;"
+                   onchange="updateCustomName('${col}', this.value)">
+        `;
+        container.appendChild(div);
+    });
+}
+
+// Mettre à jour un nom personnalisé
+function updateCustomName(col, name) {
+    customNames[col] = name.trim() || col;
+}
+
+// Réinitialiser les noms aux valeurs par défaut
+function resetNames() {
+    columns.forEach(col => {
+        customNames[col] = col;
+    });
+    updateNameInputs();
+}
+
+// Obtenir le nom d'affichage pour une colonne
+function getDisplayName(col) {
+    return customNames[col] || col;
+}
+
 function getAffichage(nom) {
   return affichageMapping[nom] || nom;
 }
+
 function getNomInterne(nom) {
-  // pour l'enregistrement/import/export
   return affichageReverseMapping[nom] || nom;
 }
-        // Initialiser les données de planning
-        days.forEach(day => {
-            planningData[day] = {};
-            timeSlots.forEach(time => {
-                planningData[day][time] = {};
-                columns.forEach(col => {
-                    planningData[day][time][col] = '';
-                });
-            });
+
+// Initialiser les données de planning
+days.forEach(day => {
+    planningData[day] = {};
+    timeSlots.forEach(time => {
+        planningData[day][time] = {};
+        columns.forEach(col => {
+            planningData[day][time][col] = '';
         });
-        document.addEventListener('mouseup', () => isMouseDown = false);
-
-document.querySelectorAll('.planning-cell').forEach(cell => {
-  cell.addEventListener('mousedown', function() {
-    isMouseDown = true;
-    // Remplir la cellule
-  });
-  cell.addEventListener('mouseover', function() {
-    if (isMouseDown) {
-      // Remplir la cellule
-    }
-  });
+    });
 });
-        function initializePlannings() {
-            days.forEach(day => {
-                createPlanningGrid(day);
-            });
-        }
-        function createPlanningGrid(day) {
-            const container = document.getElementById(`planning-${day}`);
-            container.innerHTML = '';
-            
-            // Headers
-            container.appendChild(createCell('', 'header-cell'));
-            columns.forEach(col => {
-                container.appendChild(createCell(col, 'header-cell'));
-            });
-            
-            // Time slots and data
-            timeSlots.forEach(time => {
-                container.appendChild(createCell(time, 'time-slot'));
-                columns.forEach(col => {
-                    const cell = createPlanningCell(day, time, col);
-                    container.appendChild(cell);
-                });
-            });
-            
-            // Appelle la fusion des cellules identiques seulement après avoir tout créé
-            mergeIdenticalCells(day);
-        }
 
-        
-        function createCell(content, className) {
-            const cell = document.createElement('div');
-            cell.className = className;
-            cell.textContent = content;
-            return cell;
-        }
-        
+document.addEventListener('mouseup', () => isMouseDown = false);
+
+function initializePlannings() {
+    days.forEach(day => {
+        createPlanningGrid(day);
+    });
+}
+
+function createPlanningGrid(day) {
+    const container = document.getElementById(`planning-${day}`);
+    container.innerHTML = '';
+    
+    // Headers
+    container.appendChild(createCell('', 'header-cell'));
+    columns.forEach(col => {
+        container.appendChild(createCell(col, 'header-cell'));
+    });
+    
+    // Time s and data
+    timeSlots.forEach(time => {
+        container.appendChild(createCell(time, 'time-slot'));
+        columns.forEach(col => {
+            const cell = createPlanningCell(day, time, col);
+            container.appendChild(cell);
+        });
+    });
+    
+    mergeIdenticalCells(day);
+}
+
+function createCell(content, className) {
+    const cell = document.createElement('div');
+    cell.className = className;
+    cell.textContent = content;
+    return cell;
+}
+
 function createPlanningCell(day, time, col) {
     const cell = document.createElement('div');
     cell.className = 'planning-cell';
 
-    // Repère la position de la cellule
     const rowIdx = timeSlots.indexOf(time);
     const colIdx = columns.indexOf(col);
 
-    // Gestion drag & drop
     cell.onmousedown = function(e) {
         isMouseDown = true;
         dragActivity = selectedActivity;
@@ -582,9 +634,9 @@ function createPlanningCell(day, time, col) {
         updateCell(day, time, col, dragActivity, false);
         document.body.style.userSelect = "none";
     };
+    
     cell.onmouseover = function(e) {
         if (isMouseDown && dragActivity && day === startDay && col === startCol) {
-            // Remplit les cases entre startRow et rowIdx
             let min = Math.min(startRow, rowIdx);
             let max = Math.max(startRow, rowIdx);
             for (let r = min; r <= max; r++) {
@@ -594,6 +646,7 @@ function createPlanningCell(day, time, col) {
             createPlanningGrid(day);
         }
     };
+    
     cell.onmouseup = function(e) {
         isMouseDown = false;
         dragActivity = null;
@@ -603,33 +656,6 @@ function createPlanningCell(day, time, col) {
         document.body.style.userSelect = "";
     };
 
-    // Pour mobile/tactile :
-    cell.ontouchstart = function(e) {
-        isMouseDown = true;
-        dragActivity = selectedActivity;
-        startDay = day;
-        startCol = col;
-        startRow = rowIdx;
-        updateCell(day, time, col, dragActivity, false);
-    };
-    cell.ontouchmove = function(e) {
-        if (!isMouseDown) return;
-        const touch = e.touches[0];
-        const target = document.elementFromPoint(touch.clientX, touch.clientY);
-        if (target && target.classList.contains('planning-cell')) {
-            const idx = Array.from(target.parentNode.children).indexOf(target);
-            // (Optionnel: tu peux retrouver la position exacte ici)
-        }
-    };
-    cell.ontouchend = function(e) {
-        isMouseDown = false;
-        dragActivity = null;
-        startDay = null;
-        startCol = null;
-        startRow = null;
-    };
-
-    // On continue d'afficher l'input pour l'édition manuelle
     const input = document.createElement('input');
     input.type = 'text';
     input.value = getAffichage(planningData[day][time][col]);
@@ -642,52 +668,51 @@ function createPlanningCell(day, time, col) {
     updateCellAppearance(cell, planningData[day][time][col]);
     return cell;
 }
-        
-        function updateCell(day, time, col, activity) {
-            planningData[day][time][col] = activity;
-            createPlanningGrid(day);
+
+function updateCell(day, time, col, activity) {
+    planningData[day][time][col] = activity;
+    createPlanningGrid(day);
+}
+
+function updateCellAppearance(cell, value) {
+    const activityClasses = ['bvs1', 'bvs2', 'portail', 'voltige', 'renfort', 'cours-impaire', 'cours-paire', 'etude-impaire', 'etude-paire', 'ap', 'hall', 'refectoire', 'turbo', 'bureau-midi', 'pause', 'marsons'];
+    activityClasses.forEach(cls => cell.classList.remove(cls));
+    
+    if (value) {
+        const activity = value.toLowerCase()
+            .replace(/\s+/g, '-')
+            .replace('renfort-surveillance', 'renfort')
+            .replace('réfectoire', 'refectoire');
+        if (activityClasses.includes(activity)) {
+            cell.classList.add(activity);
         }
-        
-        function updateCellAppearance(cell, value) {
-            // Retirer toutes les classes d'activité
-            const activityClasses = ['bvs1', 'bvs2', 'portail', 'voltige', 'renfort', 'cours-impaire', 'cours-paire', 'etude-impaire', 'etude-paire', 'ap', 'hall', 'refectoire', 'turbo', 'bureau-midi', 'pause', 'marsons'];
-            activityClasses.forEach(cls => cell.classList.remove(cls));
-            
-            if (value) {
-                const activity = value.toLowerCase()
-                    .replace(/\s+/g, '-')
-                    .replace('renfort-surveillance', 'renfort')
-                    .replace('réfectoire', 'refectoire');
-                if (activityClasses.includes(activity)) {
-                    cell.classList.add(activity);
-                }
-            }
-        }
-        
-        function clearSpecificPoste(poste) {
-            if (confirm(`Êtes-vous sûr de vouloir effacer tous les "${poste}" ?`)) {
-                days.forEach(day => {
-                    timeSlots.forEach(time => {
-                        columns.forEach(col => {
-                            if (planningData[day][time][col] === poste) {
-                                planningData[day][time][col] = '';
-                            }
-                        });
-                    });
-                    createPlanningGrid(day);
+    }
+}
+
+function clearSpecificPoste(poste) {
+    if (confirm(`Êtes-vous sûr de vouloir effacer tous les "${poste}" ?`)) {
+        days.forEach(day => {
+            timeSlots.forEach(time => {
+                columns.forEach(col => {
+                    if (planningData[day][time][col] === poste) {
+                        planningData[day][time][col] = '';
+                    }
                 });
-            }
-        }
-        
-        function selectActivity(activity) {
-            selectedActivity = activity;
-            document.querySelectorAll('.activity-btn').forEach(btn => {
-                btn.classList.remove('selected');
             });
-            event.target.classList.add('selected');
-        }
-        
-       function showTab(day) {
+            createPlanningGrid(day);
+        });
+    }
+}
+
+function selectActivity(activity) {
+    selectedActivity = activity;
+    document.querySelectorAll('.activity-btn').forEach(btn => {
+        btn.classList.remove('selected');
+    });
+    event.target.classList.add('selected');
+}
+
+function showTab(day) {
     document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
     event.target.classList.add('active');
@@ -695,41 +720,39 @@ function createPlanningCell(day, time, col) {
     if(day === 'synthese') {
         generateSynthesePersonneVolume();
     }
-            if(day === 'syntheseJour') {
+    if(day === 'syntheseJour') {
         generateSynthesePersonneParJour();
     }
 }
-        
-        function clearAll() {
-            if (confirm('Êtes-vous sûr de vouloir effacer tous les plannings ?')) {
-                days.forEach(day => {
-                    timeSlots.forEach(time => {
-                        columns.forEach(col => {
-                            planningData[day][time][col] = '';
-                        });
-                    });
-                    createPlanningGrid(day);
+
+function clearAll() {
+    if (confirm('Êtes-vous sûr de vouloir effacer tous les plannings ?')) {
+        days.forEach(day => {
+            timeSlots.forEach(time => {
+                columns.forEach(col => {
+                    planningData[day][time][col] = '';
                 });
-            }
-        }
-        function mergeIdenticalCells(day) {
+            });
+            createPlanningGrid(day);
+        });
+    }
+}
+
+function mergeIdenticalCells(day) {
     const rows = timeSlots.length;
     const cols = columns.length;
     const grid = document.getElementById('planning-' + day);
     if (!grid) return;
 
-    // Construction du tableau des cellules (données uniquement)
     const cellsMatrix = [];
     for (let col = 0; col < cols; col++) {
         cellsMatrix[col] = [];
         for (let row = 0; row < rows; row++) {
-            // Sauter la toute première ligne (entête)
             const idx = (row + 1) * (cols + 1) + (col + 1);
             cellsMatrix[col][row] = grid.children[idx];
         }
     }
 
-    // Fusionne uniquement les cellules de données (pas l'entête)
     for (let col = 0; col < cols; col++) {
         let start = 0;
         while (start < rows) {
@@ -754,10 +777,10 @@ function createPlanningCell(day, time, col) {
         }
     }
 }
-       function generateExcel() {
-     const wb = XLSX.utils.book_new();
 
-    // Couleurs identiques à ton code
+function generateExcel() {
+    const wb = XLSX.utils.book_new();
+
     const activityColors = {
         'bvs1': 'FFC91E63',
         'bvs2': 'FFFF9800',
@@ -776,6 +799,7 @@ function createPlanningCell(day, time, col) {
         'pause': 'FF9E9E9E',
         'marsons': 'FF00BCD4'
     };
+    
     function getActivityKey(value) {
         if (!value) return null;
         let key = value.toLowerCase()
@@ -787,10 +811,9 @@ function createPlanningCell(day, time, col) {
 
     days.forEach(day => {
         const wsData = [];
-        const headerRow = ['Heure', ...columns];
+        const headerRow = ['Heure', ...columns.map(col => getDisplayName(col))];
         wsData.push(headerRow);
 
-        // Génération des données ligne par ligne
         timeSlots.forEach(time => {
             const row = [time];
             columns.forEach(col => {
@@ -801,9 +824,8 @@ function createPlanningCell(day, time, col) {
 
         const ws = XLSX.utils.aoa_to_sheet(wsData);
 
-        // Ajout des couleurs
-        for(let r=1; r<wsData.length; r++) { // r=1 pour ignorer l'entête
-            for(let c=1; c<=columns.length; c++) { // c=1 car colonne 0 = heure
+        for(let r=1; r<wsData.length; r++) {
+            for(let c=1; c<=columns.length; c++) {
                 const value = wsData[r][c];
                 const colorKey = getActivityKey(value);
                 if (colorKey) {
@@ -817,7 +839,6 @@ function createPlanningCell(day, time, col) {
             }
         }
 
-        // Fusion des cellules (déjà vu précédemment)
         ws['!merges'] = [];
         columns.forEach((col, colIdx) => {
             let start = 1;
@@ -836,126 +857,18 @@ function createPlanningCell(day, time, col) {
             }
         });
 
-        // Largeur des colonnes
         ws['!cols'] = [{ wch: 10 }];
         columns.forEach(() => ws['!cols'].push({ wch: 15 }));
 
         XLSX.utils.book_append_sheet(wb, ws, day.charAt(0).toUpperCase() + day.slice(1));
     });
 
-    // Sauvegarder en .xlsx pour garder la mise en forme
     XLSX.writeFile(wb, 'planning_hebdomadaire.xlsx');
 }
 
-      /*  function generateExcel() {
-    const activityColors = {
-        'bvs1': '#e91e63',
-        'bvs2': '#ff9800',
-        'portail': '#ff5722',
-        'voltige': '#2196f3',
-        'renfort': '#795548',
-        'cours-impaire': '#4caf50',
-        'cours-paire': '#8bc34a',
-        'etude-impaire': '#9c27b0',
-        'etude-paire': '#673ab7',
-        'ap': '#009688',
-        'hall': '#607d8b',
-        'refectoire': '#ff6f00',
-        'turbo': '#f44336',
-        'bureau-midi': '#3f51b5',
-        'pause': '#9e9e9e',
-        'marsons': '#00bcd4'
-    };
+document.getElementById('import-excel').addEventListener('change', handleExcelImportAllDays);
 
-    function getActivityKey(value) {
-        if (!value) return null;
-        let key = value.toLowerCase()
-            .replace(/\s+/g, '-')
-            .replace('renfort-surveillance', 'renfort')
-            .replace('réfectoire', 'refectoire');
-        return activityColors[key] ? key : null;
-    }
-
-    // Concatène tous les jours dans un seul fichier
-    let fullHtml = `<html><head><meta charset="UTF-8"></head><body style="font-family:Arial,sans-serif;font-size:10pt">`;
-
-    days.forEach((day, dayIdx) => {
-        fullHtml += `<h2 style="margin-top:40px;margin-bottom:4px;color:#764ba2;">${day.charAt(0).toUpperCase()+day.slice(1)}</h2>`;
-        fullHtml += `<table border="1" cellspacing="0" cellpadding="2" style="border-collapse:collapse;width:auto;margin-bottom:24px"><tr><th style="background:#764ba2;color:#fff">Heure</th>`;
-        columns.forEach(col => {
-            fullHtml += `<th style="background:#667eea;color:#fff">${col}</th>`;
-        });
-        fullHtml += "</tr>";
-
-        // Fusion détection
-        let cellMatrix = timeSlots.map(time =>
-            columns.map(col => planningData[day][time][col] || '')
-        );
-        let renderMatrix = Array(timeSlots.length).fill().map(() => Array(columns.length).fill(true));
-        let rowspanMatrix = Array(timeSlots.length).fill().map(() => Array(columns.length).fill(1));
-        for (let col = 0; col < columns.length; col++) {
-            let start = 0;
-            while (start < timeSlots.length) {
-                let activity = cellMatrix[start][col];
-                let end = start;
-                while (
-                    end + 1 < timeSlots.length &&
-                    cellMatrix[end + 1][col] === activity &&
-                    activity !== ''
-                ) {
-                    end++;
-                }
-                let span = end - start + 1;
-                if (activity !== '' && span > 1) {
-                    rowspanMatrix[start][col] = span;
-                    for (let i = start + 1; i <= end; i++) renderMatrix[i][col] = false;
-                }
-                start = end + 1;
-            }
-        }
-        for (let row = 0; row < timeSlots.length; row++) {
-            let hasContent = columns.some(colIdx => cellMatrix[row][colIdx] !== '');
-            if (!hasContent) continue;
-            fullHtml += `<tr><td style="background:#f3f3f3;font-weight:bold">${timeSlots[row]}</td>`;
-            for (let col = 0; col < columns.length; col++) {
-                if (!renderMatrix[row][col]) continue;
-                const value = cellMatrix[row][col];
-                const colorKey = getActivityKey(value);
-                let style = '';
-                if (colorKey) style += `background:${activityColors[colorKey]};color:#fff;font-weight:bold;`;
-                if (rowspanMatrix[row][col] > 1) {
-                    fullHtml += `<td rowspan="${rowspanMatrix[row][col]}" style="${style}">${value}</td>`;
-                } else {
-                    fullHtml += `<td style="${style}">${value}</td>`;
-                }
-            }
-            fullHtml += '</tr>';
-        }
-        fullHtml += "</table>";
-    });
-
-    fullHtml += "</body></html>";
-
-    // Un seul fichier pour tous les jours
-    const blob = new Blob([fullHtml], {type:"application/vnd.ms-excel"});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `planning_complet.xls`;
-    document.body.appendChild(a);
-    a.click();
-    URL.revokeObjectURL(url);
-    document.body.removeChild(a);
-}*/
-        function updateCell(day, time, col, activity, refresh = true) {
-    planningData[day][time][col] = activity;
-    if (refresh) createPlanningGrid(day);
-}
-
-        document.getElementById('import-excel').addEventListener('change', handleExcelImportAllDays);
-
-
-        function handleExcelImportAllDays(event) {
+function handleExcelImportAllDays(event) {
     const file = event.target.files[0];
     if (!file) return;
     const reader = new FileReader();
@@ -966,42 +879,32 @@ function createPlanningCell(day, time, col) {
 
         let changedDay = false;
         dayNames.forEach(day => {
-            // Cherche la feuille correspondante (insensible à la casse)
             const sheetName = workbook.SheetNames.find(n => n.trim().toLowerCase() === day);
             if (!sheetName) return;
             const sheet = workbook.Sheets[sheetName];
 
-            // On récupère les fusions éventuelles
             const merges = sheet['!merges'] || [];
-
-            // On parse les données "classiquement"
             const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-            // On va d'abord remplir normalement
-            for (let i = 1; i < rows.length; i++) { // Commence à 1 (skip header)
+            
+            for (let i = 1; i < rows.length; i++) {
                 const row = rows[i];
                 const time = row[0];
-                if (!planningData[day][time]) continue; // Ignore heures non trouvées
+                if (!planningData[day][time]) continue;
                 for (let c = 0; c < columns.length; c++) {
                     planningData[day][time][columns[c]] = row[c + 1] || '';
                 }
             }
 
-            // Maintenant, on traite les merges
             merges.forEach(merge => {
-                // merge.s: { r: startRow, c: startCol }
-                // merge.e: { r: endRow, c: endCol }
-                // Header = ligne 0, colonne 0
                 const startRow = merge.s.r, endRow = merge.e.r;
                 const startCol = merge.s.c, endCol = merge.e.c;
-                // La valeur fusionnée est dans la cellule de départ
                 const value = rows[startRow]?.[startCol] ?? '';
-                // Appliquer cette valeur à toutes les cases de la plage fusionnée
+                
                 for (let r = startRow; r <= endRow; r++) {
-                    // Rappel : colonne 0 = heure, donc colonne 1 = colonne "A"
                     const time = rows[r]?.[0];
                     if (!planningData[day][time]) continue;
                     for (let c = startCol; c <= endCol; c++) {
-                        if (c === 0) continue; // ne jamais écrire sur la colonne des heures
+                        if (c === 0) continue;
                         planningData[day][time][columns[c - 1]] = value;
                     }
                 }
@@ -1019,10 +922,9 @@ function createPlanningCell(day, time, col) {
     };
     reader.readAsArrayBuffer(file);
 }
+
 function generateSynthesePersonneVolume() {
-    // Durée d'un créneau en minutes (à ADAPTER selon ton planning)
-    const slotDuration = 5; // change à 15 si besoin
-    // Création du mapping personne -> item -> nbre de créneaux
+    const slotDuration = 5;
     const personMap = {};
     const itemMap = {};
 
@@ -1031,29 +933,26 @@ function generateSynthesePersonneVolume() {
             columns.forEach(col => {
                 const value = planningData[day][time][col];
                 if (value && value.trim() !== "") {
-                    if (!personMap[col]) personMap[col] = {};
-                    if (!personMap[col][value]) personMap[col][value] = 0;
-                    personMap[col][value] += 1;
-                   // Mise à jour de itemMap
-                if (!itemMap[value]) itemMap[value] = [];
-                // On cherche si la personne existe déjà pour ce value dans itemMap
-                let personEntry = itemMap[value].find(entry => entry.col === col);
-                if (personEntry) {
-                    personEntry.nbre += 1;
-                } else {
-                    itemMap[value].push({ col, nbre: 1 });
+                    const personName = getDisplayName(col);
+                    if (!personMap[personName]) personMap[personName] = {};
+                    if (!personMap[personName][value]) personMap[personName][value] = 0;
+                    personMap[personName][value] += 1;
+                    
+                    if (!itemMap[value]) itemMap[value] = [];
+                    let personEntry = itemMap[value].find(entry => entry.col === personName);
+                    if (personEntry) {
+                        personEntry.nbre += 1;
+                    } else {
+                        itemMap[value].push({ col: personName, nbre: 1 });
+                    }
                 }
-            }
+            });
         });
     });
-});
 
-    // Liste des personnes triées
     const allPeople = Object.keys(personMap).sort();
-    // Liste des items (postes)
-    const allItems = Object.keys(itemMap).sort();;
+    const allItems = Object.keys(itemMap).sort();
 
-    // Construction du tableau HTML
     let html = `<table class="table table-bordered"><thead><tr><th>Personne</th>`;
     allItems.forEach(item => html += `<th>${item}</th>`);
     html += `<th>Total</th></tr></thead><tbody>`;
@@ -1066,18 +965,17 @@ function generateSynthesePersonneVolume() {
             const minutes = count * slotDuration;
             totalMinutes += minutes;
             
-             const idCell = `id="${person.replace(/\s/g,'_')}+${item.replace(/\s/g,'_')}"`;
-        html += `<td ${idCell}>${minutes > 0 ? formatHM(minutes) : ""}</td>`;
+            const idCell = `id="${person.replace(/\s/g,'_')}+${item.replace(/\s/g,'_')}"`;
+            html += `<td ${idCell}>${minutes > 0 ? formatHM(minutes) : ""}</td>`;
         });
         html += `<td><b>${totalMinutes > 0 ? formatHM(totalMinutes) : ""}</b></td></tr>`;
     });
 
     html += `</tbody></table>`;
     document.getElementById("synthese-table").innerHTML = html;
-    colorerSyntheseParItem(); // <-- Ajout ici
+    colorerSyntheseParItem();
 }
 
-// Format X min => HhMMmin
 function formatHM(mins) {
     if (mins <= 0) return "";
     const h = Math.floor(mins / 60);
@@ -1085,36 +983,26 @@ function formatHM(mins) {
     return h > 0 ? `${h}h${m > 0 ? m : ""}` : `${m}min`;
 }
 
-// Helper : minutes → format "XhYY" ou "ZZ min"
-function formatDuree(minutes) {
-    if (minutes >= 60) {
-        const h = Math.floor(minutes / 60);
-        const m = minutes % 60;
-        return h + 'h' + (m ? (m < 10 ? '0' : '') + m : '');
-    }
-    return minutes + ' min';
-}
 function generateSynthesePersonneParJour() {
-    const slotDuration = 5; // ou 15 si tu utilises 15 minutes
-    const personDayMap = {}; // { personne: { lundi: n, mardi: n, ... } }
+    const slotDuration = 5;
+    const personDayMap = {};
 
     days.forEach(day => {
         timeSlots.forEach(time => {
             columns.forEach(col => {
                 const value = planningData[day][time][col];
                 if (value && value.trim() !== "") {
-                    if (!personDayMap[col]) personDayMap[col] = {};
-                    if (!personDayMap[col][day]) personDayMap[col][day] = 0;
-                    personDayMap[col][day] += 1;
+                    const personName = getDisplayName(col);
+                    if (!personDayMap[personName]) personDayMap[personName] = {};
+                    if (!personDayMap[personName][day]) personDayMap[personName][day] = 0;
+                    personDayMap[personName][day] += 1;
                 }
             });
         });
     });
 
-    // Liste personnes triées
     const allPeople = Object.keys(personDayMap).sort();
 
-    // Construction du tableau HTML
     let html = `<table class="table table-bordered"><thead><tr><th>Personne</th>`;
     days.forEach(day => html += `<th>${day.charAt(0).toUpperCase() + day.slice(1)}</th>`);
     html += `<th>Total</th></tr></thead><tbody>`;
@@ -1134,28 +1022,26 @@ function generateSynthesePersonneParJour() {
     html += `</tbody></table>`;
     document.getElementById("syntheseJour-table").innerHTML = html;
 }
+
 function colorerSyntheseParItem() {
     const table = document.querySelector('#synthese-table table');
     if (!table) return;
     const rows = Array.from(table.querySelectorAll('tbody tr'));
     if (rows.length === 0) return;
 
-    // Récupère les items (postes) depuis l'en-tête
     const ths = Array.from(table.querySelectorAll('thead th'));
-    const items = ths.slice(1, -1).map(th => th.textContent.trim()); // Ignore "Personne" et "Total"
+    const items = ths.slice(1, -1).map(th => th.textContent.trim());
 
-    // Trouve les index des colonnes à exclure (F et G)
     const excludeColsLabels = ['F', 'G'];
     const excludeIndexes = [];
     items.forEach((item, idx) => {
         if (excludeColsLabels.includes(item)) excludeIndexes.push(idx);
     });
 
-    // Calcule la moyenne pour chaque poste (sauf F et G)
     let moyennes = [];
     items.forEach((item, colIdx) => {
         if (excludeIndexes.includes(colIdx)) {
-            moyennes[colIdx] = null; // On ne calcule pas la moyenne pour F et G
+            moyennes[colIdx] = null;
             return;
         }
         let total = 0, count = 0;
@@ -1178,12 +1064,10 @@ function colorerSyntheseParItem() {
         moyennes[colIdx] = count ? total / count : 0;
     });
 
-    // Applique les couleurs si l'écart dépasse ±60 min (sauf F et G)
     rows.forEach(row => {
         const cells = row.querySelectorAll('td');
         items.forEach((item, colIdx) => {
             if (excludeIndexes.includes(colIdx)) {
-                // Pas de couleur sur F et G, mais on nettoie le style
                 const cell = cells[colIdx + 1];
                 if (cell) {
                     cell.style.backgroundColor = '';
@@ -1206,11 +1090,9 @@ function colorerSyntheseParItem() {
             let ecart = minutes - moyenne;
             if (minutes > 0 && Math.abs(ecart) > 60) {
                 if (ecart > 60) {
-                    // Violet, intensité selon l'écart positif
                     let intensite = Math.min((ecart - 60) / (moyenne || 1), 1);
                     color = `rgba(138, 43, 226, ${0.3 + 0.7 * intensite})`;
                 } else if (ecart < -60) {
-                    // Orange, intensité selon l'écart négatif
                     let intensite = Math.min((-ecart - 60) / (moyenne || 1), 1);
                     color = `rgba(255, 140, 0, ${0.3 + 0.7 * intensite})`;
                 }
@@ -1223,172 +1105,365 @@ function colorerSyntheseParItem() {
         });
     });
 }
-function generatePDF() {
 
-const { jsPDF } = window.jspdf;
-
-const doc = new jsPDF('l', 'pt', 'a4'); // Format paysage
-
-const pageWidth = doc.internal.pageSize.getWidth(); // ~842pt
-
-const pageHeight = doc.internal.pageSize.getHeight(); // ~595pt
-
-
-
-let isFirstPage = true;
-
-
-days.forEach((day, dayIndex) => {
-
-// Ajouter une nouvelle page sauf pour le premier jour
-
-if (!isFirstPage) {
-
-doc.addPage();
-
+function setColorMode(mode) {
+    colorMode = mode;
 }
 
-isFirstPage = false;
+// === FONCTIONS PDF OPTIMISÉES (avec compression et fusion) ===
 
+function generatePDF(selectedColorMode = 'person') {
+    colorMode = selectedColorMode;
+    
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('l', 'pt', 'a4');
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
 
-// Titre du jour
+    let isFirstPage = true;
 
-doc.setFontSize(16);
+    days.forEach((day, dayIndex) => {
+        if (!isFirstPage) {
+            doc.addPage();
+        }
+        isFirstPage = false;
 
-doc.setFont('helvetica', 'bold');
+        const compressedSlots = compressTimeSlots(day);
 
-doc.text(day.charAt(0).toUpperCase() + day.slice(1), pageWidth / 2, 30, { align: "center" });
+        if (compressedSlots.length === 0) {
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(0, 0, 0);
+            doc.text(day.charAt(0).toUpperCase() + day.slice(1), 20, 40);
+            
+            doc.setFontSize(12);
+            doc.setFont('helvetica', 'normal');
+            doc.text("Aucune donnée pour ce jour", 20, 60);
+            return;
+        }
 
+        const mergeInfo = analyzeMergesOptimized(day, compressedSlots);
+        const startY = 60;
+        const availableHeight = pageHeight - startY - 20;
+        const availableWidth = pageWidth - 40;
 
-// Filtrer les créneaux qui ont au moins une donnée
+        const totalRows = compressedSlots.length + 1;
+        const minRowHeight = 12;
+        const rowHeight = Math.max(minRowHeight, Math.floor(availableHeight / totalRows));
+        const fontSize = Math.max(6, Math.min(10, rowHeight - 2));
 
-const relevantSlots = timeSlots.filter(time => {
+        const timeColWidth = 80;
+        const dataColWidth = (availableWidth - timeColWidth) / columns.length;
 
-return columns.some(col => {
+        const totalTableHeight = totalRows * rowHeight;
 
-const value = planningData[day][time][col];
+        if (totalTableHeight > availableHeight) {
+            drawOptimizedPlanningWithPagination(doc, day, compressedSlots, mergeInfo, startY, timeColWidth, dataColWidth, minRowHeight, fontSize, availableHeight, pageWidth, pageHeight);
+        } else {
+            drawPlanningTableWithMerges(doc, day, compressedSlots, mergeInfo, startY, timeColWidth, dataColWidth, rowHeight, fontSize);
+        }
+    });
 
-return value && value.trim() !== '';
+    const filename = `planning_hebdomadaire_${colorMode}.pdf`;
+    doc.save(filename);
+}
+function compressTimeSlots(day) {
+    const compressedSlots = [];
+    let currentSlot = null;
 
-});
+    timeSlots.forEach((time, index) => {
+        const hasData = columns.some(col => {
+            const value = planningData[day][time][col];
+            return value && value.trim() !== '';
+        });
 
-});
+        if (hasData) {
+            if (currentSlot) {
+                const canMerge = canMergeWithPrevious(day, currentSlot, time);
+                if (canMerge) {
+                    currentSlot.endTime = time;
+                    currentSlot.timeSlots.push(time);
+                } else {
+                    compressedSlots.push(currentSlot);
+                    currentSlot = {
+                        startTime: time,
+                        endTime: time,
+                        timeSlots: [time],
+                        displayLabel: time
+                    };
+                }
+            } else {
+                currentSlot = {
+                    startTime: time,
+                    endTime: time,
+                    timeSlots: [time],
+                    displayLabel: time
+                };
+            }
+        } else if (currentSlot) {
+            compressedSlots.push(currentSlot);
+            currentSlot = null;
+        }
+    });
 
+    if (currentSlot) {
+        compressedSlots.push(currentSlot);
+    }
 
-if (relevantSlots.length === 0) {
+    compressedSlots.forEach(slot => {
+        const endTimeWith5Min = addMinutesToTime(slot.endTime, 5);
+        slot.displayLabel = `${slot.startTime} - ${endTimeWith5Min}`;
+    });
 
-doc.setFontSize(12);
-
-doc.setFont('helvetica', 'normal');
-
-doc.text("Aucune donnée pour ce jour", pageWidth / 2, pageHeight / 2, { align: "center" });
-
-return;
-
+    return compressedSlots;
 }
 
-
-// Analyser les fusions pour chaque colonne
-
-const mergeInfo = analyzeMerges(day, relevantSlots);
-
-
-// Calcul des dimensions pour que tout tienne sur une page
-
-const startY = 50;
-
-const availableHeight = pageHeight - startY - 20; // 20pt de marge en bas
-
-const availableWidth = pageWidth - 40; // 20pt de marge de chaque côté
-
-
-// Calcul automatique des tailles
-
-const totalRows = relevantSlots.length + 1; // +1 pour l'en-tête
-
-const minRowHeight = 12; // Hauteur minimale réduite pour plus de flexibilité
-
-const rowHeight = Math.max(minRowHeight, Math.floor(availableHeight / totalRows));
-
-const fontSize = Math.max(6, Math.min(10, rowHeight - 2));
-
-
-// Largeurs des colonnes
-
-const timeColWidth = 60;
-
-const dataColWidth = (availableWidth - timeColWidth) / columns.length;
-
-
-// Vérifier si le contenu peut tenir sur une page
-
-const totalTableHeight = totalRows * rowHeight;
-
-
-if (totalTableHeight > availableHeight) {
-
-// Le contenu est trop grand, diviser en plusieurs pages
-
-drawPlanningTableWithPagination(doc, day, relevantSlots, mergeInfo, startY, timeColWidth, dataColWidth, minRowHeight, fontSize, availableHeight, pageWidth, pageHeight);
-
-} else {
-
-// Le contenu peut tenir sur une page
-
-drawPlanningTableWithMerges(doc, day, relevantSlots, mergeInfo, startY, timeColWidth, dataColWidth, rowHeight, fontSize);
-
+function canMergeWithPrevious(day, currentSlot, newTime) {
+    const lastTimeInSlot = currentSlot.timeSlots[currentSlot.timeSlots.length - 1];
+    return columns.every(col => {
+        const lastValue = planningData[day][lastTimeInSlot][col] || '';
+        const newValue = planningData[day][newTime][col] || '';
+        return lastValue.trim() === newValue.trim();
+    });
 }
 
-});
-
-
-doc.save('planning_hebdomadaire.pdf');
-
-}
-
-
-function drawOptimizedPlanningWithPagination (doc, day, relevantSlots, mergeInfo, startY, timeColWidth, dataColWidth, rowHeight, fontSize, availableHeight, pageWidth, pageHeight) {
-    const headerHeight = rowHeight;
-    const maxRowsPerPage = Math.floor((availableHeight - headerHeight) / rowHeight);
+function analyzeMergesOptimized(day, compressedSlots) {
+    const mergeInfo = {};
     
-    // Forcer la division en 2 pages maximum
-    const totalSlots = relevantSlots.length;
-    const midPoint = Math.ceil(totalSlots / 2);
-    
-    // Première page
-    const firstPageSlots = relevantSlots.slice(0, midPoint);
-    const firstPageMergeInfo = createPageMergeInfo(day, firstPageSlots, mergeInfo, 0);
-    
-    // Calculer la hauteur optimale pour la première page
-    const firstPageRowHeight = Math.max(12, Math.floor(availableHeight / (firstPageSlots.length + 1)));
-    const firstPageFontSize = Math.max(6, Math.min(10, firstPageRowHeight - 2));
-    
-    drawPlanningTableWithMerges(doc, day, firstPageSlots, firstPageMergeInfo, startY, timeColWidth, dataColWidth, firstPageRowHeight, firstPageFontSize);
-    
-    // Deuxième page si nécessaire
-    if (totalSlots > midPoint) {
-        doc.addPage();
+    columns.forEach(col => {
+        mergeInfo[col] = [];
+        let i = 0;
         
-        // Titre de la deuxième page
-        doc.setFontSize(16);
+        while (i < compressedSlots.length) {
+            const currentSlot = compressedSlots[i];
+            const currentValue = getCurrentSlotValue(day, currentSlot, col);
+            
+            if (currentValue && currentValue.trim() !== '') {
+                let mergeLength = 1;
+                
+                while (i + mergeLength < compressedSlots.length) {
+                    const nextSlot = compressedSlots[i + mergeLength];
+                    const nextValue = getCurrentSlotValue(day, nextSlot, col);
+                    if (nextValue === currentValue) {
+                        mergeLength++;
+                    } else {
+                        break;
+                    }
+                }
+                
+                for (let j = 0; j < mergeLength; j++) {
+                    mergeInfo[col][i + j] = {
+                        isFirst: j === 0,
+                        isLast: j === mergeLength - 1,
+                        mergeLength: mergeLength,
+                        value: currentValue,
+                        startRow: i,
+                        isMerged: mergeLength > 1
+                    };
+                }
+                i += mergeLength;
+            } else {
+                mergeInfo[col][i] = {
+                    isFirst: true,
+                    isLast: true,
+                    mergeLength: 1,
+                    value: '',
+                    startRow: i,
+                    isMerged: false
+                };
+                i++;
+            }
+        }
+    });
+    
+    return mergeInfo;
+}
+
+function getCurrentSlotValue(day, slot, col) {
+    return planningData[day][slot.startTime][col] || '';
+}
+
+function drawPlanningTableWithMerges(doc, day, compressedSlots, mergeInfo, startY, timeColWidth, dataColWidth, rowHeight, fontSize) {
+    let currentY = startY;
+
+    // Titre du jour
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(0, 0, 0);
+    doc.text(day.charAt(0).toUpperCase() + day.slice(1), 20, currentY - 10);
+
+    // Dessiner l'en-tête
+    doc.setFillColor(102, 126, 234);
+    doc.rect(20, currentY, timeColWidth, rowHeight, 'F');
+    columns.forEach((col, index) => {
+        const x = 20 + timeColWidth + (index * dataColWidth);
+        doc.rect(x, currentY, dataColWidth, rowHeight, 'F');
+    });
+
+    // Texte de l'en-tête
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(fontSize + 1);
+    doc.text('Horaires', 20 + timeColWidth/2, currentY + rowHeight/2 + 2, { align: 'center' });
+    
+    columns.forEach((col, index) => {
+        const x = 20 + timeColWidth + (index * dataColWidth);
+        const displayName = getDisplayName(col);
+        const truncatedName = truncateText(doc, displayName, dataColWidth - 4, fontSize + 1);
+        doc.text(truncatedName, x + dataColWidth/2, currentY + rowHeight/2 + 2, { align: 'center' });
+    });
+
+    currentY += rowHeight;
+
+    // Dessiner les arrière-plans des cellules fusionnées
+    compressedSlots.forEach((slot, rowIndex) => {
+        columns.forEach((col, colIndex) => {
+            const merge = mergeInfo[col][rowIndex];
+            const x = 20 + timeColWidth + (colIndex * dataColWidth);
+            const y = startY + rowHeight + (rowIndex * rowHeight);
+            
+            if (merge && merge.value && merge.isFirst) {
+                const color = getCellColor(merge.value, col);
+                if (color) {
+                    const mergeHeight = rowHeight * merge.mergeLength;
+                    doc.setFillColor(color.r, color.g, color.b);
+                    doc.rect(x, y, dataColWidth, mergeHeight, 'F');
+                }
+            }
+        });
+    });
+
+    // Dessiner les lignes de données
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(fontSize);
+
+    compressedSlots.forEach((slot, rowIndex) => {
+        const y = startY + rowHeight + (rowIndex * rowHeight);
+
+        // Fond alternant pour la colonne horaire
+        if (rowIndex % 2 === 0) {
+            doc.setFillColor(248, 249, 250);
+            doc.rect(20, y, timeColWidth, rowHeight, 'F');
+        }
+
+        // Colonne horaire
+        doc.setTextColor(0, 0, 0);
         doc.setFont('helvetica', 'bold');
-        doc.text(`${day.charAt(0).toUpperCase() + day.slice(1)} (2/2)`, pageWidth / 2, 30, { align: "center" });
-        
-        const secondPageSlots = relevantSlots.slice(midPoint);
-        const secondPageMergeInfo = createPageMergeInfo(day, secondPageSlots, mergeInfo, midPoint);
-        
-        // Calculer la hauteur optimale pour la deuxième page
-        const secondPageRowHeight = Math.max(12, Math.floor(availableHeight / (secondPageSlots.length + 1)));
-        const secondPageFontSize = Math.max(6, Math.min(10, secondPageRowHeight - 2));
-        
-        drawPlanningTableWithMerges(doc, day, secondPageSlots, secondPageMergeInfo, startY, timeColWidth, dataColWidth, secondPageRowHeight, secondPageFontSize);
+        const truncatedTime = truncateText(doc, slot.displayLabel, timeColWidth - 4, fontSize);
+        doc.text(truncatedTime, 20 + timeColWidth/2, y + rowHeight/2 + 2, { align: 'center' });
+
+        // Colonnes de données
+        doc.setFont('helvetica', 'bold');
+        columns.forEach((col, colIndex) => {
+            const merge = mergeInfo[col][rowIndex];
+            const x = 20 + timeColWidth + (colIndex * dataColWidth);
+
+            if (merge && merge.value && merge.isFirst) {
+                const color = getCellColor(merge.value, col);
+                if (color) {
+                    doc.setTextColor(255, 255, 255);
+                } else {
+                    doc.setTextColor(0, 0, 0);
+                }
+
+                const maxWidth = dataColWidth - 4;
+                const truncatedText = truncateText(doc, merge.value, maxWidth, fontSize);
+                const textY = y + (rowHeight * merge.mergeLength) / 2 + 2;
+                doc.text(truncatedText, x + dataColWidth/2, textY, { align: 'center' });
+            }
+        });
+    });
+
+    drawTableBorders(doc, startY, timeColWidth, dataColWidth, rowHeight, compressedSlots.length + 1, columns.length, mergeInfo, compressedSlots);
+}
+
+function getCellColor(value, columnName) {
+    if (!value) return null;
+    
+    if (colorMode === 'person') {
+        return getPersonColorRGB(columnName);
+    } else {
+        return getActivityColorRGB(value);
     }
 }
 
+function addMinutesToTime(timeStr, minutesToAdd) {
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    const date = new Date(0, 0, 0, hours, minutes + minutesToAdd, 0);
+    const h = String(date.getHours()).padStart(2, '0');
+    const m = String(date.getMinutes()).padStart(2, '0');
+    return `${h}:${m}`;
+}
+
+function drawTableBorders(doc, startY, timeColWidth, dataColWidth, rowHeight, totalRows, totalCols, mergeInfo, compressedSlots) {
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.5);
+
+    // Bordures extérieures
+    const tableWidth = timeColWidth + (totalCols * dataColWidth);
+    const tableHeight = totalRows * rowHeight;
+    doc.rect(20, startY, tableWidth, tableHeight);
+
+    // Lignes verticales
+    doc.line(20 + timeColWidth, startY, 20 + timeColWidth, startY + tableHeight);
+    for (let i = 1; i < totalCols; i++) {
+        const x = 20 + timeColWidth + (i * dataColWidth);
+        doc.line(x, startY, x, startY + tableHeight);
+    }
+
+    // Lignes horizontales
+    for (let i = 1; i <= compressedSlots.length; i++) {
+        const y = startY + (i * rowHeight);
+        
+        if (i === 1) {
+            doc.line(20, y, 20 + tableWidth, y);
+        } else {
+            doc.line(20, y, 20 + timeColWidth, y);
+            
+            columns.forEach((col, colIndex) => {
+                const rowIndex = i - 2;
+                if (rowIndex >= 0 && rowIndex < compressedSlots.length) {
+                    const merge = mergeInfo[col][rowIndex];
+                    const x = 20 + timeColWidth + (colIndex * dataColWidth);
+                    
+                    if (!merge || !merge.isMerged || merge.isLast) {
+                        doc.line(x, y, x + dataColWidth, y);
+                    }
+                } else if (i === compressedSlots.length + 1) {
+                    const x = 20 + timeColWidth + (colIndex * dataColWidth);
+                    doc.line(x, y, x + dataColWidth, y);
+                }
+            });
+        }
+    }
+}
+
+function drawOptimizedPlanningWithPagination(doc, day, compressedSlots, mergeInfo, startY, timeColWidth, dataColWidth, rowHeight, fontSize, availableHeight, pageWidth, pageHeight) {
+    const totalSlots = compressedSlots.length;
+    const midPoint = Math.ceil(totalSlots / 2);
+
+    const firstPageSlots = compressedSlots.slice(0, midPoint);
+    const firstPageMergeInfo = createPageMergeInfo(day, firstPageSlots, mergeInfo, 0);
+    const firstPageRowHeight = Math.max(12, Math.floor(availableHeight / (firstPageSlots.length + 1)));
+    const firstPageFontSize = Math.max(6, Math.min(10, firstPageRowHeight - 2));
+
+    drawPlanningTableWithMerges(doc, day, firstPageSlots, firstPageMergeInfo, startY, timeColWidth, dataColWidth, firstPageRowHeight, firstPageFontSize);
+
+    if (totalSlots > midPoint) {
+        doc.addPage();
+        
+        const secondPageSlots = compressedSlots.slice(midPoint);
+        const secondPageMergeInfo = createPageMergeInfo(day, secondPageSlots, mergeInfo, midPoint);
+        const secondPageRowHeight = Math.max(12, Math.floor(availableHeight / (secondPageSlots.length + 1)));
+        const secondPageFontSize = Math.max(6, Math.min(10, secondPageRowHeight - 2));
+
+        drawPlanningTableWithMerges(doc, `${day} (suite)`, secondPageSlots, secondPageMergeInfo, startY, timeColWidth, dataColWidth, secondPageRowHeight, secondPageFontSize);
+    }
+}
 
 function createPageMergeInfo(day, pageSlots, originalMergeInfo, startIndex) {
     const pageMergeInfo = {};
-    
+
     columns.forEach(col => {
         pageMergeInfo[col] = [];
         
@@ -1401,8 +1476,6 @@ function createPageMergeInfo(day, pageSlots, originalMergeInfo, startIndex) {
                 if (originalMerge && originalMerge.value) {
                     const originalStartRow = originalMerge.startRow;
                     const originalEndRow = originalStartRow + originalMerge.mergeLength - 1;
-                    
-                    // Calculer les limites visibles sur cette page
                     const pageStartIndex = startIndex;
                     const pageEndIndex = startIndex + pageSlots.length - 1;
                     
@@ -1432,472 +1505,212 @@ function createPageMergeInfo(day, pageSlots, originalMergeInfo, startIndex) {
             }
         });
     });
-    
+
     return pageMergeInfo;
 }
 
-
-function analyzeMerges(day, relevantSlots) {
-
-const mergeInfo = {};
-
-columns.forEach(col => {
-
-mergeInfo[col] = [];
-
-let i = 0;
-
-
-while (i < relevantSlots.length) {
-
-const currentTime = relevantSlots[i];
-
-const currentValue = planningData[day][currentTime][col];
-
-
-if (currentValue && currentValue.trim() !== '') {
-
-let mergeLength = 1;
-
-
-// Compter les créneaux consécutifs avec la même valeur
-
-while (i + mergeLength < relevantSlots.length) {
-
-const nextTime = relevantSlots[i + mergeLength];
-
-const nextValue = planningData[day][nextTime][col];
-
-
-if (nextValue === currentValue) {
-
-mergeLength++;
-
-} else {
-
-break;
-
-}
-
-}
-
-
-// Enregistrer les infos de fusion
-
-for (let j = 0; j < mergeLength; j++) {
-
-mergeInfo[col][i + j] = {
-
-isFirst: j === 0,
-
-isLast: j === mergeLength - 1,
-
-mergeLength: mergeLength,
-
-value: currentValue,
-
-startRow: i,
-
-isMerged: mergeLength > 1
-
-};
-
-}
-
-
-i += mergeLength;
-
-} else {
-
-mergeInfo[col][i] = {
-
-isFirst: true,
-
-isLast: true,
-
-mergeLength: 1,
-
-value: '',
-
-startRow: i,
-
-isMerged: false
-
-};
-
-i++;
-
-}
-}
-
-});
-
-return mergeInfo;
-
-}
-
-function drawPlanningTableWithMerges(doc, day, relevantSlots, mergeInfo, startY, timeColWidth, dataColWidth, rowHeight, fontSize) {
-
-let currentY = startY;
-// Dessiner l'en-tête
-
-doc.setFillColor(102, 126, 234); // Couleur de fond bleu
-
-doc.rect(20, currentY, timeColWidth, rowHeight, 'F');
-
-
-columns.forEach((col, index) => {
-
-const x = 20 + timeColWidth + (index * dataColWidth);
-
-doc.rect(x, currentY, dataColWidth, rowHeight, 'F');
-
-});
-
-
-// Texte de l'en-tête
-
-doc.setTextColor(255, 255, 255); // Blanc
-
-doc.setFont('helvetica', 'bold');
-
-doc.setFontSize(fontSize + 1);
-
-
-doc.text('Heure', 20 + timeColWidth/2, currentY + rowHeight/2 + 2, { align: 'center' });
-
-
-columns.forEach((col, index) => {
-
-const x = 20 + timeColWidth + (index * dataColWidth);
-
-doc.text(col, x + dataColWidth/2, currentY + rowHeight/2 + 2, { align: 'center' });
-
-});
-
-
-currentY += rowHeight;
-
-
-// Dessiner d'abord tous les arrière-plans des cellules fusionnées
-
-relevantSlots.forEach((time, rowIndex) => {
-
-columns.forEach((col, colIndex) => {
-
-const merge = mergeInfo[col][rowIndex];
-
-const x = 20 + timeColWidth + (colIndex * dataColWidth);
-
-const y = startY + rowHeight + (rowIndex * rowHeight);
-
-
-if (merge && merge.value && merge.isFirst) {
-
-// Appliquer la couleur de fond selon l'activité
-
-const color = getActivityColorRGB(merge.value);
-
-if (color) {
-
-const mergeHeight = rowHeight * merge.mergeLength;
-
-doc.setFillColor(color.r, color.g, color.b);
-
-doc.rect(x, y, dataColWidth, mergeHeight, 'F');
-
-}
-
-}
-
-});
-
-});
-
-
-// Dessiner les lignes de données
-
-doc.setFont('helvetica', 'normal');
-
-doc.setFontSize(fontSize);
-
-
-relevantSlots.forEach((time, rowIndex) => {
-
-const y = startY + rowHeight + (rowIndex * rowHeight);
-
-
-// Fond alternant pour la lisibilité (seulement pour la colonne heure)
-
-if (rowIndex % 2 === 0) {
-
-doc.setFillColor(248, 249, 250);
-
-doc.rect(20, y, timeColWidth, rowHeight, 'F');
-
-}
-
-
-// Colonne heure
-
-doc.setTextColor(0, 0, 0);
-
-doc.setFont('helvetica', 'bold');
-
-doc.text(time, 20 + timeColWidth/2, y + rowHeight/2 + 2, { align: 'center' });
-
-
-// Colonnes de données avec fusion
-
-doc.setFont('helvetica', 'bold');
-
-columns.forEach((col, colIndex) => {
-
-const merge = mergeInfo[col][rowIndex];
-
-const x = 20 + timeColWidth + (colIndex * dataColWidth);
-
-
-if (merge && merge.value) {
-
-// Définir la couleur du texte
-
-const color = getActivityColorRGB(merge.value);
-
-if (color) {
-
-doc.setTextColor(255, 255, 255); // Texte blanc sur fond coloré
-
-} else {
-
-doc.setTextColor(0, 0, 0); // Texte noir
-
-}
-
-
-// Afficher le texte seulement sur la première cellule de la fusion
-
-if (merge.isFirst) {
-
-const maxWidth = dataColWidth - 4;
-
-const truncatedText = truncateText(doc, merge.value, maxWidth, fontSize);
-
-const textY = y + (rowHeight * merge.mergeLength) / 2 + 2;
-
-doc.text(truncatedText, x + dataColWidth/2, textY, { align: 'center' });
-
-}
-
-}
-
-});
-
-});
-
-
-// Dessiner les bordures du tableau
-
-doc.setDrawColor(0, 0, 0);
-
-doc.setLineWidth(0.5);
-
-
-// Bordures extérieures
-
-const tableWidth = timeColWidth + (columns.length * dataColWidth);
-
-const tableHeight = (relevantSlots.length + 1) * rowHeight;
-
-doc.rect(20, startY, tableWidth, tableHeight);
-
-
-// Lignes verticales
-
-doc.line(20 + timeColWidth, startY, 20 + timeColWidth, startY + tableHeight);
-
-for (let i = 1; i < columns.length; i++) {
-
-const x = 20 + timeColWidth + (i * dataColWidth);
-
-doc.line(x, startY, x, startY + tableHeight);
-
-}
-
-
-// Lignes horizontales
-
-for (let i = 1; i <= relevantSlots.length; i++) {
-
-const y = startY + (i * rowHeight);
-
-
-// Ligne complète pour séparer les en-têtes
-
-if (i === 1) {
-
-doc.line(20, y, 20 + tableWidth, y);
-
-} else {
-
-// Ligne pour la colonne heure
-
-doc.line(20, y, 20 + timeColWidth, y);
-
-
-// Lignes pour chaque colonne de données (en évitant les zones fusionnées)
-
-columns.forEach((col, colIndex) => {
-
-const rowIndex = i - 2; // -1 pour l'en-tête, -1 pour l'index
-
-if (rowIndex >= 0 && rowIndex < relevantSlots.length) {
-
-const merge = mergeInfo[col][rowIndex];
-
-const x = 20 + timeColWidth + (colIndex * dataColWidth);
-
-
-// Dessiner la ligne seulement si c'est la dernière cellule d'une fusion ou pas de fusion
-
-if (!merge || !merge.isMerged || merge.isLast) {
-
-doc.line(x, y, x + dataColWidth, y);
-
-}
-
-} else if (i === relevantSlots.length + 1) {
-
-// Dernière ligne du tableau
-
-const x = 20 + timeColWidth + (colIndex * dataColWidth);
-
-doc.line(x, y, x + dataColWidth, y);
-
-}
-
-});
-
-}
-
-}
-
-}
-
-
-// Gardez les autres fonctions inchangées
-
 function getActivityColorRGB(value) {
-
-const hex = getActivityColor(value);
-
-if (!hex) return null;
-
-
-
-
-return {
-
-r: parseInt(hex.substr(1, 2), 16),
-
-g: parseInt(hex.substr(3, 2), 16),
-
-b: parseInt(hex.substr(5, 2), 16)
-
-};
-
-
-
-
+    const hex = getActivityColor(value);
+    if (!hex) return null;
+    
+    return {
+        r: parseInt(hex.substr(1, 2), 16),
+        g: parseInt(hex.substr(3, 2), 16),
+        b: parseInt(hex.substr(5, 2), 16)
+    };
 }
 
-
-function truncateText(doc, text, maxWidth, fontSize) {
-
-doc.setFontSize(fontSize);
-
-const textWidth = doc.getTextWidth(text);
-
-
-
-
-if (textWidth <= maxWidth) {
-
-return text;
-
+function getPersonColorRGB(personne) {
+    const hex = getCouleurPourPersonne(personne);
+    if (!hex) return null;
+    
+    return {
+        r: parseInt(hex.substr(1, 2), 16),
+        g: parseInt(hex.substr(3, 2), 16),
+        b: parseInt(hex.substr(5, 2), 16)
+    };
 }
-
-
-// Couper le texte et ajouter "..."
-
-let truncated = text;
-
-while (doc.getTextWidth(truncated + "...") > maxWidth && truncated.length > 0) {
-
-truncated = truncated.slice(0, -1);
-
-}
-
-
-return truncated + "...";
-
-
-
-
-}
-
 
 function getActivityColor(value) {
+    if (!value) return null;
+    
+    let key = value.toLowerCase()
+        .replace(/\s+/g, '-')
+        .replace('renfort-surveillance', 'renfort')
+        .replace('réfectoire', 'refectoire');
 
-if (!value) return null;
+    const activityColors = {
+        'bvs1': '#e91e63',
+        'bvs2': '#ff9800',
+        'portail': '#ff5722',
+        'voltige': '#2196f3',
+        'renfort': '#795548',
+        'cours-impaire': '#4caf50',
+        'cours-paire': '#8bc34a',
+        'etude-impaire': '#9c27b0',
+        'etude-paire': '#673ab7',
+        'ap': '#009688',
+        'hall': '#607d8b',
+        'refectoire': '#ff6f00',
+        'turbo': '#f44336',
+        'bureau-midi': '#3f51b5',
+        'pause': '#9e9e9e',
+        'marsons': '#00bcd4'
+    };
 
-let key = value.toLowerCase()
-
-.replace(/\s+/g, '-')
-
-.replace('renfort-surveillance', 'renfort')
-
-.replace('réfectoire', 'refectoire');
-
-const activityColors = {
-
-'bvs1': '#e91e63',
-
-'bvs2': '#ff9800',
-
-'portail': '#ff5722',
-
-'voltige': '#2196f3',
-
-'renfort': '#795548',
-
-'cours-impaire': '#4caf50',
-
-'cours-paire': '#8bc34a',
-
-'etude-impaire': '#9c27b0',
-
-'etude-paire': '#673ab7',
-
-'ap': '#009688',
-
-'hall': '#607d8b',
-
-'refectoire': '#ff6f00',
-
-'turbo': '#f44336',
-
-'bureau-midi': '#3f51b5',
-
-'pause': '#9e9e9e',
-
-'marsons': '#00bcd4'
-
-};
-
-return activityColors[key] || null;
-
+    return activityColors[key] || null;
 }
-    </script>
+
+function getCouleurPourPersonne(personne) {
+    const couleursPersonnes = {
+        'a': "#FF5733",
+        'b': "#33C1FF", 
+        'c': "#008000",
+        'd': "#d58490",
+        'e': "#FF33A8",
+        'f': "#29f0a5",
+        'g': "#A833FF"
+    };
+    
+    return couleursPersonnes[personne.toLowerCase()] || "#CCCCCC";
+}
+
+function truncateText(doc, text, maxWidth, fontSize) {
+    doc.setFontSize(fontSize);
+    const textWidth = doc.getTextWidth(text);
+    
+    if (textWidth <= maxWidth) {
+        return text;
+    }
+
+    let truncated = text;
+    while (doc.getTextWidth(truncated + "...") > maxWidth && truncated.length > 0) {
+        truncated = truncated.slice(0, -1);
+    }
+    return truncated + "...";
+}
+
+// Fonction pour changer le mode de coloration
+function setColorMode(mode) {
+    colorMode = mode;
+}
+
+// Fonction principale de génération PDF avec choix de mode
+function generatePDF(selectedColorMode = 'person') {
+    colorMode = selectedColorMode;
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('l', 'pt', 'a4');
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+
+    let isFirstPage = true;
+
+    days.forEach((day, dayIndex) => {
+        if (!isFirstPage) {
+            doc.addPage();
+        }
+        isFirstPage = false;
+
+        const compressedSlots = compressTimeSlots(day);
+        
+        if (compressedSlots.length === 0) {
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(0, 0, 0);
+            doc.text(day.charAt(0).toUpperCase() + day.slice(1), 20, 40);
+            doc.setFontSize(12);
+            doc.setFont('helvetica', 'normal');
+            doc.text("Aucune donnée pour ce jour", 20, 60);
+            return;
+        }
+
+        const mergeInfo = analyzeMergesOptimized(day, compressedSlots);
+        const startY = 60;
+        const availableHeight = pageHeight - startY - 20;
+        const availableWidth = pageWidth - 40;
+        const totalRows = compressedSlots.length + 1;
+        const minRowHeight = 12;
+        const rowHeight = Math.max(minRowHeight, Math.floor(availableHeight / totalRows));
+        const fontSize = Math.max(6, Math.min(10, rowHeight - 2));
+        const timeColWidth = 80;
+        const dataColWidth = (availableWidth - timeColWidth) / columns.length;
+        const totalTableHeight = totalRows * rowHeight;
+
+        if (totalTableHeight > availableHeight) {
+            drawOptimizedPlanningWithPagination(doc, day, compressedSlots, mergeInfo, startY, timeColWidth, dataColWidth, minRowHeight, fontSize, availableHeight, pageWidth, pageHeight);
+        } else {
+            drawPlanningTableWithMerges(doc, day, compressedSlots, mergeInfo, startY, timeColWidth, dataColWidth, rowHeight, fontSize);
+        }
+    });
+
+    const filename = `planning_hebdomadaire_${colorMode}.pdf`;
+    doc.save(filename);
+}
+
+function generatePDFByActivity() {
+    generatePDF('activity');
+}
+
+function generatePDFByPerson() {
+    generatePDF('person');
+}
+
+function generateAllDaysPDF(selectedColorMode = 'activity') {
+    colorMode = selectedColorMode;
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('l', 'pt', 'a4');
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+
+    let isFirstPage = true;
+
+    days.forEach((day, dayIndex) => {
+        if (!isFirstPage) {
+            doc.addPage();
+        }
+        isFirstPage = false;
+
+        doc.setFontSize(18);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`${day.charAt(0).toUpperCase() + day.slice(1)} (${dayIndex + 1}/${days.length})`, pageWidth / 2, 30, { align: "center" });
+
+        const compressedSlots = compressTimeSlots(day);
+        
+        if (compressedSlots.length === 0) {
+            doc.setFontSize(12);
+            doc.setFont('helvetica', 'normal');
+            doc.text("Aucune donnée pour ce jour", pageWidth / 2, pageHeight / 2, { align: "center" });
+            return;
+        }
+
+        const mergeInfo = analyzeMergesOptimized(day, compressedSlots);
+        const startY = 60;
+        const availableHeight = pageHeight - startY - 20;
+        const availableWidth = pageWidth - 40;
+        const totalRows = compressedSlots.length + 1;
+        const minRowHeight = 12;
+        const rowHeight = Math.max(minRowHeight, Math.floor(availableHeight / totalRows));
+        const fontSize = Math.max(6, Math.min(10, rowHeight - 2));
+        const timeColWidth = 80;
+        const dataColWidth = (availableWidth - timeColWidth) / columns.length;
+        const totalTableHeight = totalRows * rowHeight;
+
+        if (totalTableHeight > availableHeight) {
+            drawOptimizedPlanningWithPagination(doc, day, compressedSlots, mergeInfo, startY, timeColWidth, dataColWidth, minRowHeight, fontSize, availableHeight, pageWidth, pageHeight);
+        } else {
+            drawPlanningTableWithMerges(doc, day, compressedSlots, mergeInfo, startY, timeColWidth, dataColWidth, rowHeight, fontSize);
+        }
+    });
+
+    const filename = `planning_complet_${colorMode}.pdf`;
+    doc.save(filename);
+}
+
+// Initialisation au chargement de la page
+document.addEventListener('DOMContentLoaded', function() {
+    initializePlannings();
+    initializeNames();
+});
+</script>
 </body>
 </html>
