@@ -309,7 +309,10 @@
             <button class="btn btn-danger" onclick="clearAll()">🗑️ Effacer tout</button>
             
 <!-- Bouton d'import -->
-<input type="file" id="import-excel" accept=".xlsx,.xls" style="display:none" />
+<input type="file" id="import-pdf" accept="application/pdf" style="display:none" />
+<button class="btn btn-primary" onclick="document.getElementById('import-pdf').click()">📥 Importer un PDF</button>
+
+<input type="file" id="import-excel" accept=".xlsx,.xls" style="display:none" />            
 <button class="btn btn-primary" onclick="document.getElementById('import-excel').click()">Importer un fichier Excel</button>
         <div class="controls">
     <h3>Configuration des noms pour le PDF</h3>
@@ -2066,6 +2069,133 @@ function formatDuration(minutes) {
     }
     return `${hours} h ${mins.toString().padStart(2, '0')}`; // Ajout d'espaces autour de 'h'
 }
+        // === IMPORT PDF UNIVERSEL ===
+document.getElementById('import-pdf').addEventListener('change', handlePDFImportUniversal);
+
+async function handlePDFImportUniversal(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    try {
+        const pdfjsLib = await import("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js");
+        const reader = new FileReader();
+
+        reader.onload = async function(e) {
+            const typedarray = new Uint8Array(e.target.result);
+            const pdf = await pdfjsLib.getDocument({ data: typedarray }).promise;
+            let extractedText = "";
+
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const textContent = await page.getTextContent();
+                const pageText = textContent.items.map(item => item.str).join(" ");
+                extractedText += `\n=== PAGE ${i} ===\n` + pageText;
+            }
+
+            parsePlanningFromPDFText(extractedText);
+        };
+
+        reader.readAsArrayBuffer(file);
+    } catch (err) {
+        console.error("Erreur lors de la lecture du PDF :", err);
+        alert("Erreur : impossible de lire le fichier PDF.");
+    }
+}
+
+function parsePlanningFromPDFText(text) {
+    const jours = ["lundi", "mardi", "mercredi", "jeudi", "vendredi"];
+    let currentDay = null;
+
+    // Nettoyage global
+    text = text
+        .replace(/\s{2,}/g, " ") // espaces multiples
+        .replace(/(\d{2}h\d{2})/g, m => m.replace('h', ':')) // format "8h00" → "08:00"
+        .toLowerCase();
+
+    const lignes = text.split(/\n|(?=lundi|mardi|mercredi|jeudi|vendredi)/i);
+    const detected = { lundi: 0, mardi: 0, mercredi: 0, jeudi: 0, vendredi: 0 };
+
+    for (const ligneBrute of lignes) {
+        let ligne = ligneBrute.trim();
+        if (!ligne) continue;
+
+        // Détecter le jour
+        const jourTrouve = jours.find(j => ligne.startsWith(j));
+        if (jourTrouve) {
+            currentDay = jourTrouve;
+            detected[jourTrouve]++;
+            continue;
+        }
+
+        if (!currentDay) continue;
+
+        // Détecter l’heure et les activités
+        const heureMatch = ligne.match(/\b\d{1,2}[:h]\d{2}\b/);
+        if (!heureMatch) continue;
+
+        const heure = heureMatch[0].replace('h', ':').padStart(5, '0');
+        if (!planningData[currentDay][heure]) continue;
+
+        // Suppression de l'heure pour ne garder que les données
+        const reste = ligne.replace(heureMatch[0], '').trim();
+        if (!reste) continue;
+
+        // Tentative de découpage par colonnes/personnes
+        const tokens = reste.split(/\s{2,}|\t| {3,}/).filter(Boolean);
+        const nbCols = columns.length;
+
+        // Cas 1 : texte bien aligné avec colonnes
+        if (tokens.length >= nbCols) {
+            for (let i = 0; i < nbCols; i++) {
+                const val = tokens[i].trim();
+                if (val && planningData[currentDay][heure]) {
+                    planningData[currentDay][heure][columns[i]] = normalizeActivity(val);
+                }
+            }
+        }
+        // Cas 2 : texte compact → heuristique de reconnaissance
+        else {
+            columns.forEach(col => {
+                const nomPers = (customNames[col] || col).toLowerCase();
+                if (reste.includes(nomPers)) {
+                    const apresNom = reste.split(nomPers)[1]?.trim().split(/\s+/)[0] || "";
+                    if (apresNom) planningData[currentDay][heure][col] = normalizeActivity(apresNom);
+                }
+            });
+        }
+    }
+
+    // Mise à jour visuelle
+    days.forEach(createPlanningGrid);
+    alert("✅ Importation PDF terminée !");
+}
+
+function normalizeActivity(text) {
+    const map = {
+        "b1": "BVS1",
+        "b2": "BVS2",
+        "portail": "Portail",
+        "voltige": "Voltige",
+        "renfort": "Renfort surveillance",
+        "cours impaire": "Cours Impaire",
+        "cours paire": "Cours paire",
+        "etude impaire": "Etude impaire",
+        "etude paire": "Etude paire",
+        "ap": "AP",
+        "hall": "Hall",
+        "refectoire": "Réfectoire",
+        "turbo": "Turbo",
+        "bureau midi": "Bureau midi",
+        "pause": "Pause",
+        "marsons": "Marsons"
+    };
+
+    for (const key in map) {
+        if (text.toLowerCase().includes(key)) return map[key];
+    }
+    return text.trim();
+}
+
 </script>
 </body>
 </html>
