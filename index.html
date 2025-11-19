@@ -7,6 +7,10 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+ <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.min.js"></script>
+<script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.worker.min.js';
+</script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -309,9 +313,9 @@
             <button class="btn btn-danger" onclick="clearAll()">🗑️ Effacer tout</button>
             
 <!-- Bouton d'import -->
-<input type="file" id="import-pdf" accept="application/pdf" style="display:none" />
-<button class="btn btn-primary" onclick="document.getElementById('import-pdf').click()">📥 Importer un PDF</button>
-
+<!-- À ajouter dans la section <div class="controls"> -->
+<input type="file" id="import-pdf" accept=".pdf" style="display:none" onchange="handlePDFImport(event)" />
+<button class="btn btn-primary" onclick="document.getElementById('import-pdf').click()">📄 Importer un PDF</button>
 <input type="file" id="import-excel" accept=".xlsx,.xls" style="display:none" />            
 <button class="btn btn-primary" onclick="document.getElementById('import-excel').click()">Importer un fichier Excel</button>
         <div class="controls">
@@ -2102,100 +2106,405 @@ async function handlePDFImportUniversal(event) {
     }
 }
 
-function parsePlanningFromPDFText(text) {
-    const jours = ["lundi", "mardi", "mercredi", "jeudi", "vendredi"];
-    let currentDay = null;
-
-    // Nettoyage global
-    text = text
-        .replace(/\s{2,}/g, " ") // espaces multiples
-        .replace(/(\d{2}h\d{2})/g, m => m.replace('h', ':')) // format "8h00" → "08:00"
-        .toLowerCase();
-
-    const lignes = text.split(/\n|(?=lundi|mardi|mercredi|jeudi|vendredi)/i);
-    const detected = { lundi: 0, mardi: 0, mercredi: 0, jeudi: 0, vendredi: 0 };
-
-    for (const ligneBrute of lignes) {
-        let ligne = ligneBrute.trim();
-        if (!ligne) continue;
-
-        // Détecter le jour
-        const jourTrouve = jours.find(j => ligne.startsWith(j));
-        if (jourTrouve) {
-            currentDay = jourTrouve;
-            detected[jourTrouve]++;
-            continue;
+// Fonction principale d'import PDF
+async function handlePDFImport(event) {
+    const file = event.target.files[0];
+    if (!file || !file.type.includes('pdf')) {
+        alert('Veuillez sélectionner un fichier PDF valide.');
+        return;
+    }
+    
+    try {
+        // Afficher un message de chargement
+        showLoadingMessage('Lecture du PDF en cours...');
+        
+        // Lire le fichier
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+        
+        // Extraire le texte de toutes les pages
+        const pdfData = await extractPDFData(pdf);
+        
+        // Parser les données et remplir planningData
+        const success = parsePDFData(pdfData);
+        
+        if (success) {
+            // Mettre à jour tous les grids
+            days.forEach(day => createPlanningGrid(day));
+            alert('Import du PDF réussi !');
+        } else {
+            alert('Erreur lors de l\'analyse du PDF. Vérifiez que le format correspond.');
         }
+        
+    } catch (error) {
+        console.error('Erreur lors de l\'import du PDF:', error);
+        alert('Erreur lors de la lecture du fichier PDF.');
+    } finally {
+        hideLoadingMessage();
+    }
+    
+    // Réinitialiser l'input file
+    event.target.value = '';
+}
 
-        if (!currentDay) continue;
+// Extraire les données textuelles du PDF
+async function extractPDFData(pdf) {
+    const pdfData = {};
+    const numPages = pdf.numPages;
+    
+    for (let pageNum = 1; pageNum <= numPages; pageNum++) {
+        const page = await pdf.getPage(pageNum);
+        const textContent = await page.getTextContent();
+        
+        // Extraire et organiser le texte de la page
+        const pageText = extractPageText(textContent);
+        
+        // Identifier le jour de la semaine pour cette page
+        const dayName = identifyDayFromText(pageText);
+        if (dayName) {
+            pdfData[dayName] = pageText;
+        }
+    }
+    
+    return pdfData;
+}
 
-        // Détecter l’heure et les activités
-        const heureMatch = ligne.match(/\b\d{1,2}[:h]\d{2}\b/);
-        if (!heureMatch) continue;
-
-        const heure = heureMatch[0].replace('h', ':').padStart(5, '0');
-        if (!planningData[currentDay][heure]) continue;
-
-        // Suppression de l'heure pour ne garder que les données
-        const reste = ligne.replace(heureMatch[0], '').trim();
-        if (!reste) continue;
-
-        // Tentative de découpage par colonnes/personnes
-        const tokens = reste.split(/\s{2,}|\t| {3,}/).filter(Boolean);
-        const nbCols = columns.length;
-
-        // Cas 1 : texte bien aligné avec colonnes
-        if (tokens.length >= nbCols) {
-            for (let i = 0; i < nbCols; i++) {
-                const val = tokens[i].trim();
-                if (val && planningData[currentDay][heure]) {
-                    planningData[currentDay][heure][columns[i]] = normalizeActivity(val);
-                }
+// Extraire le texte d'une page PDF
+function extractPageText(textContent) {
+    const items = textContent.items;
+    const lines = [];
+    let currentLine = [];
+    let lastY = null;
+    
+    // Grouper les éléments de texte par ligne (même coordonnée Y)
+    items.forEach(item => {
+        const y = Math.round(item.transform[5]);
+        
+        if (lastY !== null && Math.abs(y - lastY) > 5) {
+            // Nouvelle ligne détectée
+            if (currentLine.length > 0) {
+                lines.push(currentLine.join(' '));
+                currentLine = [];
             }
         }
-        // Cas 2 : texte compact → heuristique de reconnaissance
-        else {
-            columns.forEach(col => {
-                const nomPers = (customNames[col] || col).toLowerCase();
-                if (reste.includes(nomPers)) {
-                    const apresNom = reste.split(nomPers)[1]?.trim().split(/\s+/)[0] || "";
-                    if (apresNom) planningData[currentDay][heure][col] = normalizeActivity(apresNom);
-                }
-            });
+        
+        currentLine.push(item.str);
+        lastY = y;
+    });
+    
+    // Ajouter la dernière ligne
+    if (currentLine.length > 0) {
+        lines.push(currentLine.join(' '));
+    }
+    
+    return lines;
+}
+
+// Identifier le jour de la semaine depuis le texte
+function identifyDayFromText(lines) {
+    const dayMapping = {
+        'lundi': 'lundi',
+        'mardi': 'mardi',
+        'mercredi': 'mercredi',
+        'jeudi': 'jeudi',
+        'vendredi': 'vendredi'
+    };
+    
+    for (let line of lines) {
+        const lowerLine = line.toLowerCase();
+        for (let [key, value] of Object.entries(dayMapping)) {
+            if (lowerLine.includes(key)) {
+                return value;
+            }
         }
     }
-
-    // Mise à jour visuelle
-    days.forEach(createPlanningGrid);
-    alert("✅ Importation PDF terminée !");
+    
+    return null;
 }
 
-function normalizeActivity(text) {
-    const map = {
-        "b1": "BVS1",
-        "b2": "BVS2",
-        "portail": "Portail",
-        "voltige": "Voltige",
-        "renfort": "Renfort surveillance",
-        "cours impaire": "Cours Impaire",
-        "cours paire": "Cours paire",
-        "etude impaire": "Etude impaire",
-        "etude paire": "Etude paire",
-        "ap": "AP",
-        "hall": "Hall",
-        "refectoire": "Réfectoire",
-        "turbo": "Turbo",
-        "bureau midi": "Bureau midi",
-        "pause": "Pause",
-        "marsons": "Marsons"
-    };
-
-    for (const key in map) {
-        if (text.toLowerCase().includes(key)) return map[key];
+// Parser les données du PDF et remplir planningData
+function parsePDFData(pdfData) {
+    try {
+        // Réinitialiser planningData
+        days.forEach(day => {
+            timeSlots.forEach(time => {
+                columns.forEach(col => {
+                    planningData[day][time][col] = '';
+                });
+            });
+        });
+        
+        // Pour chaque jour trouvé dans le PDF
+        Object.entries(pdfData).forEach(([day, lines]) => {
+            parseDayData(day, lines);
+        });
+        
+        return true;
+    } catch (error) {
+        console.error('Erreur lors du parsing:', error);
+        return false;
     }
-    return text.trim();
 }
 
+// Parser les données d'un jour spécifique
+function parseDayData(day, lines) {
+    // Trouver la ligne d'en-tête avec les noms
+    let headerLine = null;
+    let headerIndex = -1;
+    
+    for (let i = 0; i < lines.length; i++) {
+        if (lines[i].includes('Horaires') && lines[i].includes('Léna')) {
+            headerLine = lines[i];
+            headerIndex = i;
+            break;
+        }
+    }
+    
+    if (!headerLine) return;
+    
+    // Extraire les noms des colonnes depuis l'en-tête
+    const personNames = extractPersonNames(headerLine);
+    
+    // Mapper les noms aux colonnes A-G
+    const nameToColumn = mapNamesToColumns(personNames);
+    
+    // Parser les lignes de données
+    for (let i = headerIndex + 1; i < lines.length; i++) {
+        const line = lines[i];
+        
+        // Extraire l'horaire et les activités
+        const rowData = parseDataRow(line, personNames.length);
+        
+        if (rowData && rowData.time) {
+            // Trouver le créneau horaire correspondant
+            const timeSlot = findMatchingTimeSlot(rowData.time);
+            
+            if (timeSlot) {
+                // Assigner les activités aux bonnes personnes
+                rowData.activities.forEach((activity, index) => {
+                    if (activity && index < personNames.length) {
+                        const column = nameToColumn[personNames[index]];
+                        if (column) {
+                            // Gérer les créneaux multiples si l'activité s'étend
+                            assignActivityToSlots(day, timeSlot, column, activity, rowData.endTime);
+                        }
+                    }
+                });
+            }
+        }
+    }
+}
+
+// Extraire les noms de personnes de la ligne d'en-tête
+function extractPersonNames(headerLine) {
+    // Séparer par espaces multiples ou patterns spécifiques
+    const parts = headerLine.split(/\s{2,}|\t/);
+    const names = [];
+    
+    // Les noms commencent après "Horaires"
+    let startIndex = parts.findIndex(p => p.includes('Horaires')) + 1;
+    
+    for (let i = startIndex; i < parts.length; i++) {
+        const name = parts[i].trim();
+        if (name && name.length > 1 && !name.includes(':')) {
+            names.push(name);
+        }
+    }
+    
+    // Si on n'a pas trouvé les noms correctement, utiliser les noms connus
+    if (names.length === 0) {
+        return ['Léna', 'Kiéran', 'Jérôme', 'Ophélie', 'Emma', 'Fanny', 'Jérémy'];
+    }
+    
+    return names;
+}
+
+// Mapper les noms aux colonnes A-G
+function mapNamesToColumns(personNames) {
+    const mapping = {};
+    const predefinedMapping = {
+        'Léna': 'A',
+        'Kiéran': 'B',
+        'Jérôme': 'C',
+        'Ophélie': 'D',
+        'Emma': 'E',
+        'Fanny': 'F',
+        'Jérémy': 'G'
+    };
+    
+    personNames.forEach(name => {
+        if (predefinedMapping[name]) {
+            mapping[name] = predefinedMapping[name];
+        }
+    });
+    
+    // Si les noms ne correspondent pas, mapper dans l'ordre
+    if (Object.keys(mapping).length === 0) {
+        personNames.forEach((name, index) => {
+            if (index < columns.length) {
+                mapping[name] = columns[index];
+            }
+        });
+    }
+    
+    return mapping;
+}
+
+// Parser une ligne de données
+function parseDataRow(line, numPersons) {
+    // Pattern pour détecter les horaires (format: HH:MM - HH:MM)
+    const timePattern = /(\d{2}:\d{2})\s*-\s*(\d{2}:\d{2})/;
+    const timeMatch = line.match(timePattern);
+    
+    if (!timeMatch) return null;
+    
+    const startTime = timeMatch[1];
+    const endTime = timeMatch[2];
+    
+    // Extraire le reste de la ligne après l'horaire
+    const remainingLine = line.substring(timeMatch.index + timeMatch[0].length);
+    
+    // Séparer les activités (approximatif, peut nécessiter ajustement)
+    const activities = splitActivities(remainingLine, numPersons);
+    
+    return {
+        time: startTime,
+        endTime: endTime,
+        activities: activities
+    };
+}
+
+// Séparer les activités d'une ligne
+function splitActivities(line, numPersons) {
+    const activities = [];
+    
+    // Liste des activités connues pour aider à la séparation
+    const knownActivities = [
+        'BVS1', 'BVS2', 'Portail', 'Voltige', 'Renfort surveillance',
+        'Cours Impaire', 'Cours paire', 'Etude impaire', 'Etude paire',
+        'AP', 'Hall', 'Réfectoire', 'Turbo', 'Bureau midi', 'Pause', 'Marsons'
+    ];
+    
+    // Diviser la ligne en utilisant les activités connues comme délimiteurs
+    let currentPos = 0;
+    let currentActivity = '';
+    
+    while (currentPos < line.length && activities.length < numPersons) {
+        let foundActivity = false;
+        
+        // Chercher une activité connue à partir de la position actuelle
+        for (let activity of knownActivities) {
+            if (line.substring(currentPos).trim().startsWith(activity)) {
+                if (currentActivity) {
+                    activities.push(''); // Cellule vide avant cette activité
+                }
+                activities.push(activity);
+                currentPos += activity.length;
+                foundActivity = true;
+                currentActivity = activity;
+                break;
+            }
+        }
+        
+        if (!foundActivity) {
+            // Avancer d'un caractère si aucune activité n'est trouvée
+            currentPos++;
+        }
+    }
+    
+    // Compléter avec des cellules vides si nécessaire
+    while (activities.length < numPersons) {
+        activities.push('');
+    }
+    
+    return activities;
+}
+
+// Trouver le créneau horaire correspondant
+function findMatchingTimeSlot(time) {
+    // Normaliser le format de l'heure
+    const normalizedTime = time.replace(/\s/g, '');
+    
+    return timeSlots.find(slot => {
+        const normalizedSlot = slot.replace(/\s/g, '');
+        return normalizedSlot === normalizedTime;
+    });
+}
+
+// Assigner une activité à plusieurs créneaux si nécessaire
+function assignActivityToSlots(day, startTime, column, activity, endTime) {
+    const startIndex = timeSlots.indexOf(startTime);
+    const endSlot = findMatchingTimeSlot(endTime);
+    const endIndex = endSlot ? timeSlots.indexOf(endSlot) : startIndex;
+    
+    if (startIndex !== -1) {
+        // Assigner l'activité à tous les créneaux entre le début et la fin
+        for (let i = startIndex; i <= endIndex && i < timeSlots.length; i++) {
+            planningData[day][timeSlots[i]][column] = activity;
+        }
+    }
+}
+
+// Fonctions d'interface pour afficher le chargement
+function showLoadingMessage(message) {
+    // Créer un overlay de chargement
+    const overlay = document.createElement('div');
+    overlay.id = 'pdf-loading-overlay';
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+    `;
+    
+    const messageDiv = document.createElement('div');
+    messageDiv.style.cssText = `
+        background: white;
+        padding: 30px;
+        border-radius: 10px;
+        font-size: 18px;
+        font-weight: bold;
+        color: #333;
+    `;
+    messageDiv.textContent = message;
+    
+    overlay.appendChild(messageDiv);
+    document.body.appendChild(overlay);
+}
+
+function hideLoadingMessage() {
+    const overlay = document.getElementById('pdf-loading-overlay');
+    if (overlay) {
+        overlay.remove();
+    }
+}
+
+// Mettre à jour les noms personnalisés si trouvés dans le PDF
+function updateCustomNamesFromPDF(personNames) {
+    const predefinedMapping = {
+        'Léna': 'A',
+        'Kiéran': 'B',
+        'Jérôme': 'C',
+        'Ophélie': 'D',
+        'Emma': 'E',
+        'Fanny': 'F',
+        'Jérémy': 'G'
+    };
+    
+    Object.entries(predefinedMapping).forEach(([name, col]) => {
+        if (personNames.includes(name)) {
+            customNames[col] = name;
+        }
+    });
+    
+    updateNameInputs();
+}
 </script>
 </body>
 </html>
