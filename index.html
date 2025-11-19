@@ -2105,8 +2105,7 @@ async function handlePDFImportUniversal(event) {
         alert("Erreur : impossible de lire le fichier PDF.");
     }
 }
-
-// Fonction principale d'import PDF
+// Fonction principale d'import PDF améliorée
 async function handlePDFImport(event) {
     const file = event.target.files[0];
     if (!file || !file.type.includes('pdf')) {
@@ -2115,94 +2114,118 @@ async function handlePDFImport(event) {
     }
     
     try {
-        // Afficher un message de chargement
         showLoadingMessage('Lecture du PDF en cours...');
         
-        // Lire le fichier
         const arrayBuffer = await file.arrayBuffer();
         const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
         
-        // Extraire le texte de toutes les pages
-        const pdfData = await extractPDFData(pdf);
+        // Réinitialiser toutes les données
+        clearAllDataSilently();
         
-        // Parser les données et remplir planningData
-        const success = parsePDFData(pdfData);
-        
-        if (success) {
-            // Mettre à jour tous les grids
-            days.forEach(day => createPlanningGrid(day));
-            alert('Import du PDF réussi !');
-        } else {
-            alert('Erreur lors de l\'analyse du PDF. Vérifiez que le format correspond.');
+        // Traiter chaque page
+        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+            await processPDFPage(pdf, pageNum);
         }
+        
+        // Mettre à jour l'interface
+        days.forEach(day => createPlanningGrid(day));
+        
+        alert('Import du PDF réussi !');
         
     } catch (error) {
         console.error('Erreur lors de l\'import du PDF:', error);
-        alert('Erreur lors de la lecture du fichier PDF.');
+        alert('Erreur lors de la lecture du fichier PDF: ' + error.message);
     } finally {
         hideLoadingMessage();
     }
     
-    // Réinitialiser l'input file
     event.target.value = '';
 }
 
-// Extraire les données textuelles du PDF
-async function extractPDFData(pdf) {
-    const pdfData = {};
-    const numPages = pdf.numPages;
-    
-    for (let pageNum = 1; pageNum <= numPages; pageNum++) {
-        const page = await pdf.getPage(pageNum);
-        const textContent = await page.getTextContent();
-        
-        // Extraire et organiser le texte de la page
-        const pageText = extractPageText(textContent);
-        
-        // Identifier le jour de la semaine pour cette page
-        const dayName = identifyDayFromText(pageText);
-        if (dayName) {
-            pdfData[dayName] = pageText;
-        }
-    }
-    
-    return pdfData;
+// Effacer toutes les données sans confirmation
+function clearAllDataSilently() {
+    days.forEach(day => {
+        timeSlots.forEach(time => {
+            columns.forEach(col => {
+                planningData[day][time][col] = '';
+            });
+        });
+    });
 }
 
-// Extraire le texte d'une page PDF
-function extractPageText(textContent) {
-    const items = textContent.items;
-    const lines = [];
-    let currentLine = [];
-    let lastY = null;
+// Traiter une page spécifique du PDF
+async function processPDFPage(pdf, pageNum) {
+    const page = await pdf.getPage(pageNum);
+    const textContent = await page.getTextContent();
     
-    // Grouper les éléments de texte par ligne (même coordonnée Y)
-    items.forEach(item => {
-        const y = Math.round(item.transform[5]);
+    // Extraire le texte avec positions
+    const textItems = textContent.items.map(item => ({
+        text: item.str,
+        x: Math.round(item.transform[4]),
+        y: Math.round(item.transform[5]),
+        width: item.width || 0
+    }));
+    
+    // Grouper par lignes (même Y)
+    const lines = groupTextByLines(textItems);
+    
+    // Identifier le jour
+    const dayName = identifyDay(lines);
+    if (!dayName) return;
+    
+    // Trouver la ligne d'en-tête
+    const headerLineIndex = findHeaderLine(lines);
+    if (headerLineIndex === -1) return;
+    
+    // Extraire les positions des colonnes
+    const columnPositions = extractColumnPositions(lines[headerLineIndex]);
+    
+    // Mettre à jour les noms personnalisés
+    updateNamesFromHeader(columnPositions);
+    
+    // Parser chaque ligne de données
+    for (let i = headerLineIndex + 1; i < lines.length; i++) {
+        parseDataLine(lines[i], columnPositions, dayName);
+    }
+}
+
+// Grouper les éléments de texte par ligne
+function groupTextByLines(textItems) {
+    const lines = [];
+    const tolerance = 3; // Tolérance en pixels pour considérer que c'est la même ligne
+    
+    textItems.sort((a, b) => b.y - a.y || a.x - b.x); // Trier par Y décroissant puis X croissant
+    
+    textItems.forEach(item => {
+        let foundLine = false;
         
-        if (lastY !== null && Math.abs(y - lastY) > 5) {
-            // Nouvelle ligne détectée
-            if (currentLine.length > 0) {
-                lines.push(currentLine.join(' '));
-                currentLine = [];
+        for (let line of lines) {
+            if (Math.abs(line.y - item.y) <= tolerance) {
+                line.items.push(item);
+                foundLine = true;
+                break;
             }
         }
         
-        currentLine.push(item.str);
-        lastY = y;
+        if (!foundLine) {
+            lines.push({
+                y: item.y,
+                items: [item]
+            });
+        }
     });
     
-    // Ajouter la dernière ligne
-    if (currentLine.length > 0) {
-        lines.push(currentLine.join(' '));
-    }
+    // Trier les items dans chaque ligne par position X
+    lines.forEach(line => {
+        line.items.sort((a, b) => a.x - b.x);
+    });
     
     return lines;
 }
 
-// Identifier le jour de la semaine depuis le texte
-function identifyDayFromText(lines) {
-    const dayMapping = {
+// Identifier le jour de la semaine
+function identifyDay(lines) {
+    const days = {
         'lundi': 'lundi',
         'mardi': 'mardi',
         'mercredi': 'mercredi',
@@ -2211,9 +2234,9 @@ function identifyDayFromText(lines) {
     };
     
     for (let line of lines) {
-        const lowerLine = line.toLowerCase();
-        for (let [key, value] of Object.entries(dayMapping)) {
-            if (lowerLine.includes(key)) {
+        const lineText = line.items.map(item => item.text).join(' ').toLowerCase();
+        for (let [key, value] of Object.entries(days)) {
+            if (lineText.includes(key)) {
                 return value;
             }
         }
@@ -2222,232 +2245,255 @@ function identifyDayFromText(lines) {
     return null;
 }
 
-// Parser les données du PDF et remplir planningData
-function parsePDFData(pdfData) {
-    try {
-        // Réinitialiser planningData
-        days.forEach(day => {
-            timeSlots.forEach(time => {
-                columns.forEach(col => {
-                    planningData[day][time][col] = '';
-                });
-            });
-        });
-        
-        // Pour chaque jour trouvé dans le PDF
-        Object.entries(pdfData).forEach(([day, lines]) => {
-            parseDayData(day, lines);
-        });
-        
-        return true;
-    } catch (error) {
-        console.error('Erreur lors du parsing:', error);
-        return false;
+// Trouver l'index de la ligne d'en-tête
+function findHeaderLine(lines) {
+    for (let i = 0; i < lines.length; i++) {
+        const lineText = lines[i].items.map(item => item.text).join(' ');
+        if (lineText.includes('Horaires') && (lineText.includes('Léna') || lineText.includes('A'))) {
+            return i;
+        }
     }
+    return -1;
 }
 
-// Parser les données d'un jour spécifique
-function parseDayData(day, lines) {
-    // Trouver la ligne d'en-tête avec les noms
-    let headerLine = null;
-    let headerIndex = -1;
+// Extraire les positions et noms des colonnes
+function extractColumnPositions(headerLine) {
+    const columns = [];
+    const knownNames = ['Léna', 'Kiéran', 'Jérôme', 'Ophélie', 'Emma', 'Fanny', 'Jérémy'];
     
-    for (let i = 0; i < lines.length; i++) {
-        if (lines[i].includes('Horaires') && lines[i].includes('Léna')) {
-            headerLine = lines[i];
-            headerIndex = i;
+    headerLine.items.forEach(item => {
+        const text = item.text.trim();
+        
+        if (text === 'Horaires') {
+            // Colonne des horaires
+            columns.push({
+                name: 'Horaires',
+                x: item.x,
+                column: null
+            });
+        } else if (knownNames.includes(text)) {
+            // Colonnes des personnes
+            const columnIndex = knownNames.indexOf(text);
+            columns.push({
+                name: text,
+                x: item.x,
+                column: String.fromCharCode(65 + columnIndex) // A, B, C, etc.
+            });
+        }
+    });
+    
+    // Si on n'a pas trouvé tous les noms, essayer de les déduire par position
+    if (columns.filter(c => c.column).length < 7) {
+        return deduceColumnPositions(headerLine);
+    }
+    
+    return columns;
+}
+
+// Déduire les positions des colonnes si les noms ne sont pas tous trouvés
+function deduceColumnPositions(headerLine) {
+    const columns = [];
+    const items = headerLine.items.filter(item => item.text.trim() !== '');
+    
+    // Le premier élément est "Horaires"
+    if (items.length > 0 && items[0].text.includes('Horaires')) {
+        columns.push({
+            name: 'Horaires',
+            x: items[0].x,
+            column: null
+        });
+        
+        // Les suivants sont les colonnes A-G
+        for (let i = 1; i < items.length && i <= 7; i++) {
+            columns.push({
+                name: items[i].text,
+                x: items[i].x,
+                column: String.fromCharCode(64 + i) // A, B, C, etc.
+            });
+        }
+    }
+    
+    return columns;
+}
+
+// Mettre à jour les noms personnalisés depuis l'en-tête
+function updateNamesFromHeader(columnPositions) {
+    columnPositions.forEach(col => {
+        if (col.column && col.name) {
+            customNames[col.column] = col.name;
+        }
+    });
+    updateNameInputs();
+}
+
+// Parser une ligne de données
+function parseDataLine(line, columnPositions, dayName) {
+    if (!line.items || line.items.length === 0) return;
+    
+    // Chercher l'horaire dans la ligne
+    let timeRange = null;
+    let timeItem = null;
+    
+    for (let item of line.items) {
+        const timeMatch = item.text.match(/(\d{2}:\d{2})\s*-\s*(\d{2}:\d{2})/);
+        if (timeMatch) {
+            timeRange = {
+                start: timeMatch[1],
+                end: timeMatch[2]
+            };
+            timeItem = item;
             break;
         }
     }
     
-    if (!headerLine) return;
+    if (!timeRange) return;
     
-    // Extraire les noms des colonnes depuis l'en-tête
-    const personNames = extractPersonNames(headerLine);
+    // Mapper les activités aux colonnes basé sur la position X
+    const activities = mapActivitiesToColumns(line.items, columnPositions, timeItem.x);
     
-    // Mapper les noms aux colonnes A-G
-    const nameToColumn = mapNamesToColumns(personNames);
+    // Assigner les activités aux créneaux
+    assignActivitiesToTimeSlots(dayName, timeRange, activities);
+}
+
+// Mapper les activités aux bonnes colonnes basé sur leur position X
+function mapActivitiesToColumns(items, columnPositions, timeX) {
+    const activities = {};
     
-    // Parser les lignes de données
-    for (let i = headerIndex + 1; i < lines.length; i++) {
-        const line = lines[i];
+    // Filtrer les colonnes (exclure "Horaires")
+    const dataColumns = columnPositions.filter(col => col.column !== null);
+    
+    // Pour chaque item de texte (sauf l'horaire)
+    items.forEach(item => {
+        // Ignorer l'item d'horaire
+        if (item.text.match(/\d{2}:\d{2}\s*-\s*\d{2}:\d{2}/)) return;
         
-        // Extraire l'horaire et les activités
-        const rowData = parseDataRow(line, personNames.length);
+        // Ignorer les textes vides
+        const text = item.text.trim();
+        if (!text) return;
         
-        if (rowData && rowData.time) {
-            // Trouver le créneau horaire correspondant
-            const timeSlot = findMatchingTimeSlot(rowData.time);
-            
-            if (timeSlot) {
-                // Assigner les activités aux bonnes personnes
-                rowData.activities.forEach((activity, index) => {
-                    if (activity && index < personNames.length) {
-                        const column = nameToColumn[personNames[index]];
-                        if (column) {
-                            // Gérer les créneaux multiples si l'activité s'étend
-                            assignActivityToSlots(day, timeSlot, column, activity, rowData.endTime);
-                        }
-                    }
-                });
+        // Trouver la colonne la plus proche basée sur la position X
+        let closestColumn = null;
+        let minDistance = Infinity;
+        
+        dataColumns.forEach(col => {
+            const distance = Math.abs(item.x - col.x);
+            if (distance < minDistance) {
+                minDistance = distance;
+                closestColumn = col;
             }
-        }
-    }
-}
-
-// Extraire les noms de personnes de la ligne d'en-tête
-function extractPersonNames(headerLine) {
-    // Séparer par espaces multiples ou patterns spécifiques
-    const parts = headerLine.split(/\s{2,}|\t/);
-    const names = [];
-    
-    // Les noms commencent après "Horaires"
-    let startIndex = parts.findIndex(p => p.includes('Horaires')) + 1;
-    
-    for (let i = startIndex; i < parts.length; i++) {
-        const name = parts[i].trim();
-        if (name && name.length > 1 && !name.includes(':')) {
-            names.push(name);
-        }
-    }
-    
-    // Si on n'a pas trouvé les noms correctement, utiliser les noms connus
-    if (names.length === 0) {
-        return ['Léna', 'Kiéran', 'Jérôme', 'Ophélie', 'Emma', 'Fanny', 'Jérémy'];
-    }
-    
-    return names;
-}
-
-// Mapper les noms aux colonnes A-G
-function mapNamesToColumns(personNames) {
-    const mapping = {};
-    const predefinedMapping = {
-        'Léna': 'A',
-        'Kiéran': 'B',
-        'Jérôme': 'C',
-        'Ophélie': 'D',
-        'Emma': 'E',
-        'Fanny': 'F',
-        'Jérémy': 'G'
-    };
-    
-    personNames.forEach(name => {
-        if (predefinedMapping[name]) {
-            mapping[name] = predefinedMapping[name];
+        });
+        
+        // Si on a trouvé une colonne proche (tolérance de 100 pixels)
+        if (closestColumn && minDistance < 100) {
+            if (!activities[closestColumn.column]) {
+                activities[closestColumn.column] = text;
+            } else {
+                // Concaténer si il y a déjà une activité (cas de texte sur plusieurs parties)
+                activities[closestColumn.column] += ' ' + text;
+            }
         }
     });
     
-    // Si les noms ne correspondent pas, mapper dans l'ordre
-    if (Object.keys(mapping).length === 0) {
-        personNames.forEach((name, index) => {
-            if (index < columns.length) {
-                mapping[name] = columns[index];
-            }
-        });
-    }
-    
-    return mapping;
-}
-
-// Parser une ligne de données
-function parseDataRow(line, numPersons) {
-    // Pattern pour détecter les horaires (format: HH:MM - HH:MM)
-    const timePattern = /(\d{2}:\d{2})\s*-\s*(\d{2}:\d{2})/;
-    const timeMatch = line.match(timePattern);
-    
-    if (!timeMatch) return null;
-    
-    const startTime = timeMatch[1];
-    const endTime = timeMatch[2];
-    
-    // Extraire le reste de la ligne après l'horaire
-    const remainingLine = line.substring(timeMatch.index + timeMatch[0].length);
-    
-    // Séparer les activités (approximatif, peut nécessiter ajustement)
-    const activities = splitActivities(remainingLine, numPersons);
-    
-    return {
-        time: startTime,
-        endTime: endTime,
-        activities: activities
-    };
-}
-
-// Séparer les activités d'une ligne
-function splitActivities(line, numPersons) {
-    const activities = [];
-    
-    // Liste des activités connues pour aider à la séparation
-    const knownActivities = [
-        'BVS1', 'BVS2', 'Portail', 'Voltige', 'Renfort surveillance',
-        'Cours Impaire', 'Cours paire', 'Etude impaire', 'Etude paire',
-        'AP', 'Hall', 'Réfectoire', 'Turbo', 'Bureau midi', 'Pause', 'Marsons'
-    ];
-    
-    // Diviser la ligne en utilisant les activités connues comme délimiteurs
-    let currentPos = 0;
-    let currentActivity = '';
-    
-    while (currentPos < line.length && activities.length < numPersons) {
-        let foundActivity = false;
-        
-        // Chercher une activité connue à partir de la position actuelle
-        for (let activity of knownActivities) {
-            if (line.substring(currentPos).trim().startsWith(activity)) {
-                if (currentActivity) {
-                    activities.push(''); // Cellule vide avant cette activité
-                }
-                activities.push(activity);
-                currentPos += activity.length;
-                foundActivity = true;
-                currentActivity = activity;
-                break;
-            }
-        }
-        
-        if (!foundActivity) {
-            // Avancer d'un caractère si aucune activité n'est trouvée
-            currentPos++;
-        }
-    }
-    
-    // Compléter avec des cellules vides si nécessaire
-    while (activities.length < numPersons) {
-        activities.push('');
-    }
+    // Nettoyer les activités (enlever les espaces multiples, normaliser)
+    Object.keys(activities).forEach(col => {
+        activities[col] = normalizeActivity(activities[col]);
+    });
     
     return activities;
 }
 
-// Trouver le créneau horaire correspondant
-function findMatchingTimeSlot(time) {
-    // Normaliser le format de l'heure
-    const normalizedTime = time.replace(/\s/g, '');
+// Normaliser le nom d'une activité
+function normalizeActivity(activity) {
+    if (!activity) return '';
     
-    return timeSlots.find(slot => {
-        const normalizedSlot = slot.replace(/\s/g, '');
-        return normalizedSlot === normalizedTime;
+    // Remplacer les espaces multiples par un seul
+    activity = activity.replace(/\s+/g, ' ').trim();
+    
+    // Mappings pour corriger les noms d'activités
+    const activityMappings = {
+        'cours impaire': 'Cours Impaire',
+        'cours paire': 'Cours paire',
+        'etude impaire': 'Etude impaire',
+        'etude paire': 'Etude paire',
+        'renfort surveillance': 'Renfort surveillance',
+        'bureau midi': 'Bureau midi',
+        'bvs1': 'BVS1',
+        'bvs2': 'BVS2',
+        'portail': 'Portail',
+        'voltige': 'Voltige',
+        'ap': 'AP',
+        'hall': 'Hall',
+        'réfectoire': 'Réfectoire',
+        'refectoire': 'Réfectoire',
+        'turbo': 'Turbo',
+        'pause': 'Pause',
+        'marsons': 'Marsons'
+    };
+    
+    const lower = activity.toLowerCase();
+    for (let [key, value] of Object.entries(activityMappings)) {
+        if (lower === key) {
+            return value;
+        }
+    }
+    
+    // Si on n'a pas trouvé de mapping, capitaliser la première lettre
+    return activity.charAt(0).toUpperCase() + activity.slice(1);
+}
+
+// Assigner les activités aux créneaux horaires
+function assignActivitiesToTimeSlots(dayName, timeRange, activities) {
+    const startIndex = findTimeSlotIndex(timeRange.start);
+    const endIndex = findTimeSlotIndex(timeRange.end);
+    
+    if (startIndex === -1) return;
+    
+    // Calculer le nombre de créneaux à remplir
+    const actualEndIndex = endIndex === -1 ? startIndex : endIndex - 1;
+    
+    // Pour chaque colonne avec une activité
+    Object.entries(activities).forEach(([column, activity]) => {
+        if (activity) {
+            // Remplir tous les créneaux de 5 minutes entre le début et la fin
+            for (let i = startIndex; i <= actualEndIndex && i < timeSlots.length; i++) {
+                planningData[dayName][timeSlots[i]][column] = activity;
+            }
+        }
     });
 }
 
-// Assigner une activité à plusieurs créneaux si nécessaire
-function assignActivityToSlots(day, startTime, column, activity, endTime) {
-    const startIndex = timeSlots.indexOf(startTime);
-    const endSlot = findMatchingTimeSlot(endTime);
-    const endIndex = endSlot ? timeSlots.indexOf(endSlot) : startIndex;
+// Trouver l'index d'un créneau horaire
+function findTimeSlotIndex(time) {
+    const normalizedTime = time.replace(/\s/g, '');
+    const index = timeSlots.findIndex(slot => slot === normalizedTime);
     
-    if (startIndex !== -1) {
-        // Assigner l'activité à tous les créneaux entre le début et la fin
-        for (let i = startIndex; i <= endIndex && i < timeSlots.length; i++) {
-            planningData[day][timeSlots[i]][column] = activity;
-        }
+    if (index === -1) {
+        // Essayer de trouver le créneau le plus proche
+        const [hours, minutes] = time.split(':').map(Number);
+        const targetMinutes = hours * 60 + minutes;
+        
+        let closestIndex = -1;
+        let minDiff = Infinity;
+        
+        timeSlots.forEach((slot, idx) => {
+            const [slotHours, slotMinutes] = slot.split(':').map(Number);
+            const slotTotalMinutes = slotHours * 60 + slotMinutes;
+            const diff = Math.abs(slotTotalMinutes - targetMinutes);
+            
+            if (diff < minDiff) {
+                minDiff = diff;
+                closestIndex = idx;
+            }
+        });
+        
+        return closestIndex;
     }
+    
+    return index;
 }
 
-// Fonctions d'interface pour afficher le chargement
+// Fonctions d'interface
 function showLoadingMessage(message) {
-    // Créer un overlay de chargement
     const overlay = document.createElement('div');
     overlay.id = 'pdf-loading-overlay';
     overlay.style.cssText = `
@@ -2471,8 +2517,22 @@ function showLoadingMessage(message) {
         font-size: 18px;
         font-weight: bold;
         color: #333;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     `;
-    messageDiv.textContent = message;
+    messageDiv.innerHTML = `
+        <div style="text-align: center;">
+            <div>${message}</div>
+            <div style="margin-top: 10px;">
+                <div style="display: inline-block; width: 30px; height: 30px; border: 3px solid #667eea; border-radius: 50%; border-top-color: transparent; animation: spin 1s linear infinite;"></div>
+            </div>
+        </div>
+        <style>
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+        </style>
+    `;
     
     overlay.appendChild(messageDiv);
     document.body.appendChild(overlay);
@@ -2483,27 +2543,6 @@ function hideLoadingMessage() {
     if (overlay) {
         overlay.remove();
     }
-}
-
-// Mettre à jour les noms personnalisés si trouvés dans le PDF
-function updateCustomNamesFromPDF(personNames) {
-    const predefinedMapping = {
-        'Léna': 'A',
-        'Kiéran': 'B',
-        'Jérôme': 'C',
-        'Ophélie': 'D',
-        'Emma': 'E',
-        'Fanny': 'F',
-        'Jérémy': 'G'
-    };
-    
-    Object.entries(predefinedMapping).forEach(([name, col]) => {
-        if (personNames.includes(name)) {
-            customNames[col] = name;
-        }
-    });
-    
-    updateNameInputs();
 }
 </script>
 </body>
