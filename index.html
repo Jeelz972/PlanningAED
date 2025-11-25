@@ -1136,6 +1136,13 @@ function generateSynthesePersonneVolume() {
     // Appliquer les couleurs après un court délai
     setTimeout(() => colorerSyntheseParItem(), 100);
 }
+        // Fonction formatHM reste inchangée
+function formatHM(mins) {
+    if (mins <= 0) return "";
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return h > 0 ? `${h}h${m > 0 ? m : ""}` : `${m}min`;
+}
         function generateSynthesePersonneParJour() {
     const slotDuration = 5;
     const personDayMap = {};
