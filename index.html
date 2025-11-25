@@ -937,6 +937,7 @@ function generateSynthesePersonneVolume() {
     const personMap = {};
     const itemMap = {};
 
+    // Collecter les données
     days.forEach(day => {
         timeSlots.forEach(time => {
             columns.forEach(col => {
@@ -959,39 +960,192 @@ function generateSynthesePersonneVolume() {
         });
     });
 
-    const allPeople = Object.keys(personMap).sort();
-    const allItems = Object.keys(itemMap).sort();
+    // Créer les groupes d'activités
+    const groupedItems = {
+        'Etude (Total)': {
+            items: ['Etude impaire', 'Etude paire'],
+            isGroup: true,
+            expanded: false
+        },
+        'Cours (Total)': {
+            items: ['Cours Impaire', 'Cours paire'],
+            isGroup: true,
+            expanded: false
+        }
+    };
 
-    let html = `<table class="table table-bordered"><thead><tr><th>Personne</th>`;
-    allItems.forEach(item => html += `<th>${item}</th>`);
+    // Calculer les totaux pour les groupes
+    const allPeople = Object.keys(personMap).sort();
+    
+    // Préparer la liste des colonnes avec les groupes
+    let columnHeaders = [];
+    const processedItems = new Set();
+    
+    // Ajouter les groupes et leurs détails
+    Object.entries(groupedItems).forEach(([groupName, groupData]) => {
+        columnHeaders.push({
+            name: groupName,
+            isGroup: true,
+            items: groupData.items
+        });
+        
+        // Ajouter les détails du groupe (initialement cachés)
+        groupData.items.forEach(item => {
+            if (itemMap[item]) {
+                columnHeaders.push({
+                    name: item,
+                    isDetail: true,
+                    parentGroup: groupName
+                });
+                processedItems.add(item);
+            }
+        });
+    });
+    
+    // Ajouter les autres activités non groupées
+    Object.keys(itemMap).sort().forEach(item => {
+        if (!processedItems.has(item)) {
+            columnHeaders.push({
+                name: item,
+                isGroup: false,
+                isDetail: false
+            });
+        }
+    });
+
+    // Générer le HTML
+    let html = `
+        <style>
+            .group-header {
+                cursor: pointer;
+                background-color: #f0f0f0;
+                font-weight: bold;
+                position: relative;
+            }
+            .group-header:hover {
+                background-color: #e0e0e0;
+            }
+            .expand-icon {
+                display: inline-block;
+                margin-right: 5px;
+                transition: transform 0.3s;
+            }
+            .expanded .expand-icon {
+                transform: rotate(90deg);
+            }
+            .detail-column {
+                display: none;
+                background-color: #f9f9f9;
+                font-size: 0.9em;
+                font-style: italic;
+            }
+            .detail-column.visible {
+                display: table-cell;
+            }
+            .detail-row {
+                display: none;
+            }
+            .detail-row.visible {
+                display: table-cell;
+            }
+        </style>
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Personne</th>`;
+    
+    // En-têtes de colonnes
+    columnHeaders.forEach(col => {
+        if (col.isGroup) {
+            html += `<th class="group-header" onclick="toggleGroup('${col.name}')">
+                        <span class="expand-icon">▶</span>${col.name}
+                     </th>`;
+        } else if (col.isDetail) {
+            html += `<th class="detail-column" data-group="${col.parentGroup}">${col.name}</th>`;
+        } else {
+            html += `<th>${col.name}</th>`;
+        }
+    });
+    
     html += `<th>Total</th></tr></thead><tbody>`;
 
+    // Lignes de données pour chaque personne
     allPeople.forEach(person => {
         let totalMinutes = 0;
         html += `<tr><td>${person}</td>`;
-        allItems.forEach(item => {
-            const count = personMap[person][item] || 0;
-            const minutes = count * slotDuration;
-            totalMinutes += minutes;
-            
-            const idCell = `id="${person.replace(/\s/g,'_')}+${item.replace(/\s/g,'_')}"`;
-            html += `<td ${idCell}>${minutes > 0 ? formatHM(minutes) : ""}</td>`;
+        
+        columnHeaders.forEach(col => {
+            if (col.isGroup) {
+                // Calculer le total du groupe
+                let groupTotal = 0;
+                col.items.forEach(item => {
+                    const count = personMap[person][item] || 0;
+                    groupTotal += count * slotDuration;
+                });
+                totalMinutes += groupTotal;
+                html += `<td class="group-cell" style="background-color: #f5f5f5; font-weight: bold;">
+                            ${groupTotal > 0 ? formatHM(groupTotal) : ""}
+                         </td>`;
+            } else if (col.isDetail) {
+                const count = personMap[person][col.name] || 0;
+                const minutes = count * slotDuration;
+                html += `<td class="detail-row detail-cell" data-group="${col.parentGroup}">
+                            ${minutes > 0 ? formatHM(minutes) : ""}
+                         </td>`;
+            } else {
+                const count = personMap[person][col.name] || 0;
+                const minutes = count * slotDuration;
+                totalMinutes += minutes;
+                html += `<td>${minutes > 0 ? formatHM(minutes) : ""}</td>`;
+            }
         });
+        
         html += `<td><b>${totalMinutes > 0 ? formatHM(totalMinutes) : ""}</b></td></tr>`;
     });
 
     html += `</tbody></table>`;
+    
+    // Ajouter le script pour gérer l'expansion/réduction
+    html += `
+        <script>
+            function toggleGroup(groupName) {
+                const detailColumns = document.querySelectorAll('.detail-column[data-group="' + groupName + '"]');
+                const detailCells = document.querySelectorAll('.detail-cell[data-group="' + groupName + '"]');
+                const groupHeader = event.currentTarget;
+                const expandIcon = groupHeader.querySelector('.expand-icon');
+                
+                detailColumns.forEach(col => {
+                    col.classList.toggle('visible');
+                });
+                
+                detailCells.forEach(cell => {
+                    cell.classList.toggle('visible');
+                });
+                
+                groupHeader.classList.toggle('expanded');
+                
+                // Rotation de l'icône
+                if (groupHeader.classList.contains('expanded')) {
+                    expandIcon.style.transform = 'rotate(90deg)';
+                } else {
+                    expandIcon.style.transform = 'rotate(0deg)';
+                }
+            } `
+    ;
+    
     document.getElementById("synthese-table").innerHTML = html;
-    colorerSyntheseParItem();
+    
+    // Appliquer les couleurs après un court délai pour s'assurer que le DOM est prêt
+    setTimeout(() => colorerSyntheseParItem(), 100);
 }
 
+// Fonction formatHM reste inchangée
 function formatHM(mins) {
     if (mins <= 0) return "";
     const h = Math.floor(mins / 60);
     const m = mins % 60;
     return h > 0 ? `${h}h${m > 0 ? m : ""}` : `${m}min`;
 }
-
 function generateSynthesePersonneParJour() {
     const slotDuration = 5;
     const personDayMap = {};
