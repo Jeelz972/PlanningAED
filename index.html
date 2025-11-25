@@ -932,6 +932,32 @@ function handleExcelImportAllDays(event) {
     reader.readAsArrayBuffer(file);
 }
 
+// Fonction pour gérer l'expansion/réduction des groupes (à placer dans le script principal)
+function toggleGroup(groupName) {
+    const detailColumns = document.querySelectorAll('.detail-column[data-group="' + groupName + '"]');
+    const detailCells = document.querySelectorAll('.detail-cell[data-group="' + groupName + '"]');
+    const groupHeader = event.currentTarget;
+    const expandIcon = groupHeader.querySelector('.expand-icon');
+    
+    detailColumns.forEach(col => {
+        col.classList.toggle('visible');
+    });
+    
+    detailCells.forEach(cell => {
+        cell.classList.toggle('visible');
+    });
+    
+    groupHeader.classList.toggle('expanded');
+    
+    // Rotation de l'icône
+    if (groupHeader.classList.contains('expanded')) {
+        expandIcon.style.transform = 'rotate(90deg)';
+    } else {
+        expandIcon.style.transform = 'rotate(0deg)';
+    }
+}
+
+// Fonction de synthèse modifiée (sans le script inline)
 function generateSynthesePersonneVolume() {
     const slotDuration = 5;
     const personMap = {};
@@ -1105,48 +1131,12 @@ function generateSynthesePersonneVolume() {
 
     html += `</tbody></table>`;
     
-    // Ajouter le script pour gérer l'expansion/réduction
-    html += `
-        <script>
-            function toggleGroup(groupName) {
-                const detailColumns = document.querySelectorAll('.detail-column[data-group="' + groupName + '"]');
-                const detailCells = document.querySelectorAll('.detail-cell[data-group="' + groupName + '"]');
-                const groupHeader = event.currentTarget;
-                const expandIcon = groupHeader.querySelector('.expand-icon');
-                
-                detailColumns.forEach(col => {
-                    col.classList.toggle('visible');
-                });
-                
-                detailCells.forEach(cell => {
-                    cell.classList.toggle('visible');
-                });
-                
-                groupHeader.classList.toggle('expanded');
-                
-                // Rotation de l'icône
-                if (groupHeader.classList.contains('expanded')) {
-                    expandIcon.style.transform = 'rotate(90deg)';
-                } else {
-                    expandIcon.style.transform = 'rotate(0deg)';
-                }
-            }</script> `
-    ;
-    
     document.getElementById("synthese-table").innerHTML = html;
     
-    // Appliquer les couleurs après un court délai pour s'assurer que le DOM est prêt
+    // Appliquer les couleurs après un court délai
     setTimeout(() => colorerSyntheseParItem(), 100);
 }
-
-// Fonction formatHM reste inchangée
-function formatHM(mins) {
-    if (mins <= 0) return "";
-    const h = Math.floor(mins / 60);
-    const m = mins % 60;
-    return h > 0 ? `${h}h${m > 0 ? m : ""}` : `${m}min`;
-}
-function generateSynthesePersonneParJour() {
+        function generateSynthesePersonneParJour() {
     const slotDuration = 5;
     const personDayMap = {};
 
